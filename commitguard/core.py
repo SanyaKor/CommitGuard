@@ -1,5 +1,6 @@
 import argparse
 import asyncio
+from .leaks_parser import LeaksParser
 from .githubclient import GitHubClient
 
 def main():
@@ -14,14 +15,17 @@ def main():
 
     async def conc_part():
         commit_hashes, commit_data, delta_time = await ghc.run_fetching_async(int(args.n), 10)
-        commits = ghc.extract_commits_code(commit_data)
-        return commit_hashes, commits, delta_time
+        return commit_hashes, commit_data, delta_time
 
     c_hashes, c_data, time = asyncio.run(conc_part())
+    leaksparser = LeaksParser("")
+
+    for hash in c_hashes:
+        c_diffs = ghc.get_commit_diffs(c_data, hash)
+        diffs_text = ghc.get_commit_diffs_text(c_diffs, deletions_included = False)
+        leaks_text = leaksparser.run_scanner(diffs_text)
+
 
 if __name__ == "__main__":
     main()
-
-
-
 

@@ -7,18 +7,19 @@ import time
 from pathlib import Path
 from typing import List, Dict, Tuple
 from dotenv import load_dotenv
-from .logging_config import init_logging, get_logger
+from .logging_config import get_logger
 
 log = get_logger(__name__)
 
-ALLOWED_EXTENSIONS = {
-    ".py", ".js", ".java", ".go", ".rb", ".php", ".cs", ".c", ".cpp",
-    ".yml", ".yaml", ".json", ".cfg",
-    ".sh", ".bash",".key", ".ipynb"
-}
-MAX_COMMITS = 100
+
 
 class GitHubClient:
+    ALLOWED_EXTENSIONS = {
+        ".py", ".js", ".java", ".go", ".rb", ".php", ".cs", ".c", ".cpp",
+        ".yml", ".yaml", ".json", ".cfg",
+        ".sh", ".bash", ".key", ".ipynb"
+    }
+    MAX_COMMITS = 100
 
     def __init__(self, repo_url: str):
         owner, repo = self.__parse_github_url(repo_url)
@@ -66,10 +67,10 @@ class GitHubClient:
             log.error(f"Status: {resp.status_code} Body: {body[:200]}")
             sys.exit(1)
 
-    def run_fetching_sync(self, number_of_commits : int) -> Tuple[List[str], Dict[str, Dict], float]:
+    def run_fetching_sync(self, number_of_commits : int):
 
-        if number_of_commits > MAX_COMMITS or number_of_commits < 1:
-            log.error(f"Invalid number of commits [1:{MAX_COMMITS}], exiting ..")
+        if number_of_commits > self.MAX_COMMITS or number_of_commits < 1:
+            log.error(f"Invalid number of commits [1:{self.MAX_COMMITS}], exiting ..")
             sys.exit(1)
 
         log.info(f"Fetching {number_of_commits} commit(s) ...")
@@ -89,8 +90,8 @@ class GitHubClient:
 
     async def run_fetching_async(self, number_of_commits : int, max_concurrency: int) -> Tuple[List[str], Dict[str, Dict], float]:
 
-        if number_of_commits > MAX_COMMITS or number_of_commits < 1:
-            log.error(f"Invalid number of commits [1:{MAX_COMMITS}], exiting ..")
+        if number_of_commits > self.MAX_COMMITS or number_of_commits < 1:
+            log.error(f"Invalid number of commits [1:{self.MAX_COMMITS}], exiting ..")
             sys.exit(1)
 
         log.info(f"Fetching {number_of_commits} commit(s) ...")
@@ -127,79 +128,6 @@ class GitHubClient:
         log.debug(f"ОК: {len(commit_data)}/{len(commit_hashes)} commits fetched")
         return True
 
-    def extract_commits_code(self, commit_data: Dict[str, Dict]) -> Dict[str, Dict[str, List[Tuple[str, str]]]]:
-
-        line_regex = re.compile(
-            r"@@ -(?P<old_start>\d+)(?:,(?P<old_count>\d+))? \+(?P<new_start>\d+)(?:,(?P<new_count>\d+))? @@")
-
-        def right_filename_extension(filename: str):
-
-            path = Path(filename)
-
-            ext = path.suffix.lower()
-            if ext in ALLOWED_EXTENSIONS:
-                log.debug(f"{filename} allowed extension ")
-                return True
-
-            log.debug(f"{filename} ignored extension ")
-            return False
-
-
-        commits_container: Dict[str, Dict[str, List[Tuple[str, str]]]] = {}
-
-        for sha, data in commit_data.items():
-
-            additions: List[Tuple[str, str]] = []
-            deletions: List[Tuple[str, str]] = []
-
-            for f in data.get("files", []):
-                patch = f.get("patch")
-                if not patch:
-                    continue
-
-                filename = f["filename"]
-                if not right_filename_extension(filename):
-                    continue
-
-                addition_line_number = None
-                deletion_line_number = None
-
-                for line in patch.splitlines():
-                    m = line_regex.match(line)
-                    if m:
-                        addition_line_number = int(m.group("new_start"))
-                        deletion_line_number = int(m.group("old_start"))
-                        continue
-
-                    if line.startswith("+") and not line.startswith("+++"):
-                        location = f"{filename}:{addition_line_number if addition_line_number is not None else ''}"
-                        text = line[1:]
-                        additions.append([location, text])
-                        if addition_line_number is not None:
-                            addition_line_number += 1
-                        continue
-
-                    if line.startswith("-") and not line.startswith("---"):
-                        location = f"{filename}:{deletion_line_number if deletion_line_number is not None else ''}"
-                        text = line[1:]
-                        deletions.append([location, text])
-                        if deletion_line_number is not None:
-                            deletion_line_number += 1
-                        continue
-
-                    if line.startswith(" "):
-                        if addition_line_number is not None:
-                            addition_line_number += 1
-                        if deletion_line_number is not None:
-                            deletion_line_number += 1
-                        continue
-
-            commits_container[sha] = {
-                "additions": additions,
-                "deletions": deletions
-            }
-        return commits_container
-
     def print_commits(self, commits_container: Dict[str, Dict[str, List[Tuple[str, str]]]] = {}):
         if not commits_container:
             print("empty container")
@@ -226,11 +154,115 @@ class GitHubClient:
                 print("  [-] Deletions: (none)")
     #endregion
 
-    #region PRIVATE methods
+    def get_commit_diffs_text(self,  commit: List[Tuple[str, str]], deletions_included = False ) -> List[str]:
+
+        text: List[str] = []
+
+        additions = commit.get("additions", [])
+        deletions = commit.get("deletions", [])
+
+        if additions:
+            for loc, line in additions:
+                text.append(line)
+
+
+
+        if deletions_included:
+            if deletions:
+                for loc, line in additions:
+                    text.append(line)
+
+        return text
+
+    def get_commit_diffs(self, commits_data: Dict[str, Dict[str, List[Tuple[str, str]]]], commit_hash: str):
+
+        c_data = None
+
+        for sha, data in commits_data.items():
+            if sha == commit_hash:
+                log.debug(f"Found commit {sha}")
+                c_data = data
+                break
+
+        if not c_data:
+            log.error(f"Not found commit {commit_hash}")
+            return None
+
+        line_regex = re.compile(
+            r"@@ -(?P<old_start>\d+)(?:,(?P<old_count>\d+))? \+(?P<new_start>\d+)(?:,(?P<new_count>\d+))? @@")
+
+        def right_filename_extension(filename: str):
+
+            path = Path(filename)
+
+            ext = path.suffix.lower()
+            if ext in self.ALLOWED_EXTENSIONS:
+                log.debug(f"{filename} allowed extension ")
+                return True
+
+            log.debug(f"{filename} ignored extension ")
+            return False
+
+
+        additions: List[Tuple[str, str]] = []
+        deletions: List[Tuple[str, str]] = []
+
+
+        for f in data.get("files", []):
+            patch = f.get("patch")
+            if not patch:
+                continue
+
+            filename = f["filename"]
+            if not right_filename_extension(filename):
+                continue
+
+            addition_line_number = None
+            deletion_line_number = None
+
+            for line in patch.splitlines():
+                m = line_regex.match(line)
+                if m:
+                    addition_line_number = int(m.group("new_start"))
+                    deletion_line_number = int(m.group("old_start"))
+                    continue
+
+                if line.startswith("+") and not line.startswith("+++"):
+                    location = f"{filename}:{addition_line_number if addition_line_number is not None else ''}"
+                    text = line[1:]
+                    additions.append([location, text])
+                    if addition_line_number is not None:
+                        addition_line_number += 1
+                    continue
+
+                if line.startswith("-") and not line.startswith("---"):
+                    location = f"{filename}:{deletion_line_number if deletion_line_number is not None else ''}"
+                    text = line[1:]
+                    deletions.append([location, text])
+                    if deletion_line_number is not None:
+                        deletion_line_number += 1
+                    continue
+
+                if line.startswith(" "):
+                    if addition_line_number is not None:
+                        addition_line_number += 1
+                    if deletion_line_number is not None:
+                        deletion_line_number += 1
+                    continue
+
+        details = {
+            "additions": additions,
+            "deletions": deletions
+        }
+
+        return details
+
+    # region PRIVATE methods
+
     def __fetch_commits_list(self, number_of_commits: int) -> List[str]:
 
-        if(number_of_commits > MAX_COMMITS or number_of_commits < 1):
-            log.error(f"Invalid number of commits [1:{MAX_COMMITS}], exiting ..")
+        if(number_of_commits > self.MAX_COMMITS or number_of_commits < 1):
+            log.error(f"Invalid number of commits [1:{self.MAX_COMMITS}], exiting ..")
             sys.exit(1)
 
         params = {"per_page": number_of_commits}
@@ -290,21 +322,87 @@ class GitHubClient:
         return m.group("owner"), m.group("repo")
     #endregion
 
+    # region TMP methods
+    def extract_commits_code(self, commit_data: Dict[str, Dict]) -> Dict[str, Dict[str, List[Tuple[str, str]]]]:
+
+        line_regex = re.compile(
+            r"@@ -(?P<old_start>\d+)(?:,(?P<old_count>\d+))? \+(?P<new_start>\d+)(?:,(?P<new_count>\d+))? @@")
+
+        def right_filename_extension(filename: str):
+
+            path = Path(filename)
+
+            ext = path.suffix.lower()
+            if ext in self.ALLOWED_EXTENSIONS:
+                log.debug(f"{filename} allowed extension ")
+                return True
+
+            log.debug(f"{filename} ignored extension ")
+            return False
+
+        commits_container: Dict[str, Dict[str, List[Tuple[str, str]]]] = {}
+
+        for sha, data in commit_data.items():
+
+            additions = []
+            deletions = []
+
+            for f in data.get("files", []):
+                patch = f.get("patch")
+                if not patch:
+                    continue
+
+                filename = f["filename"]
+                if not right_filename_extension(filename):
+                    continue
+
+                addition_line_number = None
+                deletion_line_number = None
+
+                for line in patch.splitlines():
+                    m = line_regex.match(line)
+                    if m:
+                        addition_line_number = int(m.group("new_start"))
+                        deletion_line_number = int(m.group("old_start"))
+                        continue
+
+                    if line.startswith("+") and not line.startswith("+++"):
+                        location = f"{filename}:{addition_line_number if addition_line_number is not None else ''}"
+                        text = line[1:]
+                        additions.append({
+                            "location": location,
+                            "text": text
+                        })
+                        if addition_line_number is not None:
+                            addition_line_number += 1
+                        continue
+
+                    if line.startswith("-") and not line.startswith("---"):
+                        location = f"{filename}:{deletion_line_number if deletion_line_number is not None else ''}"
+                        text = line[1:]
+                        deletions.append({
+                            "location": location,
+                            "text": text
+                        })
+                        if deletion_line_number is not None:
+                            deletion_line_number += 1
+                        continue
+
+                    if line.startswith(" "):
+                        if addition_line_number is not None:
+                            addition_line_number += 1
+                        if deletion_line_number is not None:
+                            deletion_line_number += 1
+                        continue
+
+            commits_container[sha] = {
+                "additions": additions,
+                "deletions": deletions
+            }
+        return commits_container
+    #endregion TMP methods
 
 
-# ghc = GitHubClient('https://github.com/SanyaKor/Cryptanalysis.git')
-# ghc.authorize_github_api()
-#
-#
-# async def conc_part():
-#     commit_hashes, commit_data, delta_time = await ghc.run_fetching_async(70, 10)
-#     commits = ghc.extract_commits_code(commit_data)
-#     return delta_time, commits
-#
-# t,c = asyncio.run(conc_part())
-#
-# commit_hashes, commit_data, delta_time = ghc.run_fetching_sync(70)
-# commits = ghc.extract_commits_code(commit_data)
 
 
 
