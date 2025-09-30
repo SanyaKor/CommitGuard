@@ -108,6 +108,7 @@ class GitHubClient:
         results = await asyncio.gather(*(guarded(commit_hash) for commit_hash in commit_hashes))
         log.info(f"Successfully fetched {number_of_commits} commit(s)")
 
+
         commit_data: Dict[str, Dict] = {}
         for commit_hash, data in results:
             commit_data[commit_hash] = data
