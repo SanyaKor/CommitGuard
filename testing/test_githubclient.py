@@ -27,7 +27,6 @@ def test_auth_github_api(mocker, caplog):
     assert "Auth in Github API successful" in caplog.text
 
 
-#
 # #region FETCHING COMMITS
 # def test_github_fetching_sync(mocker, caplog):
 #
@@ -124,46 +123,46 @@ def test_auth_github_api(mocker, caplog):
 #     assert "Successfully fetched" in caplog.text
 # #endregion
 #
-# #region UNSUCCESSFUL AUTHORIZATION
-# def test_authorize_no_token(mocker, caplog):
-#
-#     mocker.patch("commitguard.githubclient.os.getenv", return_value=None)
-#     ghc = GitHubClient("")
-#
-#     with caplog.at_level("ERROR"):
-#         with pytest.raises(SystemExit) as e:
-#             ghc.authorize_github_api()
-#
-#     assert e.value.code == 1
-#     assert "Error there is no GITHUB_TOKEN in environment" in caplog.text
-#
-# @pytest.mark.parametrize("status,msg", [
-#     (201, "Created"),
-#     (204, "No Content"),
-#     (301, "Moved Permanently"),
-#     (400, "Bad Request"),
-#     (403, "Forbidden"),
-#     (404, "Not Found"),
-#     (500, "Internal Server Error"),
-# ])
-# def test_api_errors(mocker, caplog, status, msg):
-#     mocker.patch("commitguard.githubclient.os.getenv", return_value="token")
-#
-#     fake = mocker.Mock(status_code=status)
-#     fake.raise_for_status.side_effect = requests.HTTPError(f"{status} {msg}")
-#     mocker.patch("commitguard.githubclient.requests.Session.get", return_value=fake)
-#
-#     ghc = GitHubClient("")
-#
-#     with caplog.at_level("ERROR"):
-#         with pytest.raises(SystemExit) as e:
-#             ghc.authorize_github_api()
-#
-#     assert e.value.code == 1
-#     assert str(status) in caplog.text
-# #endregion
-#
-#
+#region UNSUCCESSFUL AUTHORIZATION
+def test_authorize_no_token(mocker, caplog):
+
+    mocker.patch("commitguard.githubclient.os.getenv", return_value=None)
+    ghc = GitHubClient("")
+
+    with caplog.at_level("ERROR"):
+        with pytest.raises(SystemExit) as e:
+            ghc.authorize_github_api()
+
+    assert e.value.code == 1
+    assert "Error there is no GITHUB_TOKEN in environment" in caplog.text
+
+@pytest.mark.parametrize("status,msg", [
+    (201, "Created"),
+    (204, "No Content"),
+    (301, "Moved Permanently"),
+    (400, "Bad Request"),
+    (403, "Forbidden"),
+    (404, "Not Found"),
+    (500, "Internal Server Error"),
+])
+def test_api_errors(mocker, caplog, status, msg):
+    mocker.patch("commitguard.githubclient.os.getenv", return_value="token")
+
+    fake = mocker.Mock(status_code=status)
+    fake.raise_for_status.side_effect = requests.HTTPError(f"{status} {msg}")
+    mocker.patch("commitguard.githubclient.requests.Session.get", return_value=fake)
+
+    ghc = GitHubClient("")
+
+    with caplog.at_level("ERROR"):
+        with pytest.raises(SystemExit) as e:
+            ghc.authorize_github_api()
+
+    assert e.value.code == 1
+    assert str(status) in caplog.text
+#endregion
+
+
 def test_auth_api_json_error(mocker, caplog):
     mocker.patch("commitguard.githubclient.os.getenv", return_value="token")
 
