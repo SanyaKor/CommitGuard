@@ -4,20 +4,20 @@ import pytest
 import requests
 import os
 
-from commitguard.git_utils import GitHubClient
+from commitguard.githubclient import GitHubClient
 
 
 
 
 def test_auth_github_api(mocker, caplog):
-    mocker.patch("commitguard.git_utils.os.getenv", return_value="token")
+    mocker.patch("commitguard.githubclient.os.getenv", return_value="token")
 
     fake = mocker.Mock()
     fake.status_code = 200
     fake.json.return_value = {"login": "tester"}
     fake.headers = {"X-RateLimit-Limit": "60", "X-RateLimit-Remaining": "59"}
 
-    mocker.patch("commitguard.git_utils.requests.Session.get", return_value=fake)
+    mocker.patch("commitguard.githubclient.requests.Session.get", return_value=fake)
 
     ghc = GitHubClient("")
 
@@ -29,7 +29,7 @@ def test_auth_github_api(mocker, caplog):
 #region FETCHING COMMITS
 def test_github_fetching_sync(mocker, caplog):
 
-    mocker.patch("commitguard.git_utils.os.getenv", return_value="token")
+    mocker.patch("commitguard.githubclient.os.getenv", return_value="token")
 
     fake_user = mocker.Mock(status_code=200)
     fake_user.json.return_value = {"login": "octocat"}
@@ -61,7 +61,7 @@ def test_github_fetching_sync(mocker, caplog):
         if url.endswith("/commits/def456"): return fake_detail_def
         raise AssertionError(f"Unexpected URL: {url}")
 
-    mocker.patch("commitguard.git_utils.requests.Session.get", side_effect=get_side_effect)
+    mocker.patch("commitguard.githubclient.requests.Session.get", side_effect=get_side_effect)
 
     ghc = GitHubClient("")
 
@@ -75,7 +75,7 @@ def test_github_fetching_sync(mocker, caplog):
 
 @pytest.mark.asyncio
 async def test_auth_then_fetching_async_logs_only(mocker, caplog):
-    mocker.patch("commitguard.git_utils.os.getenv", return_value="dummy_token")
+    mocker.patch("commitguard.githubclient.os.getenv", return_value="dummy_token")
 
     fake_user = mocker.Mock(status_code=200)
     fake_user.json.return_value = {"login": "octocat"}
@@ -109,7 +109,7 @@ async def test_auth_then_fetching_async_logs_only(mocker, caplog):
             return fake_commits
         raise AssertionError(f"Unexpected URL: {url}")
 
-    mocker.patch("commitguard.git_utils.requests.Session.get", side_effect=get_side_effect)
+    mocker.patch("commitguard.githubclient.requests.Session.get", side_effect=get_side_effect)
 
     ghc = GitHubClient("https://github.com/owner/repo.git")
 
@@ -125,7 +125,7 @@ async def test_auth_then_fetching_async_logs_only(mocker, caplog):
 #region UNSUCCESSFUL AUTHORIZATION
 def test_authorize_no_token(mocker, caplog):
 
-    mocker.patch("commitguard.git_utils.os.getenv", return_value=None)
+    mocker.patch("commitguard.githubclient.os.getenv", return_value=None)
     ghc = GitHubClient("")
 
     with caplog.at_level("ERROR"):
@@ -145,11 +145,11 @@ def test_authorize_no_token(mocker, caplog):
     (500, "Internal Server Error"),
 ])
 def test_api_errors(mocker, caplog, status, msg):
-    mocker.patch("commitguard.git_utils.os.getenv", return_value="token")
+    mocker.patch("commitguard.githubclient.os.getenv", return_value="token")
 
     fake = mocker.Mock(status_code=status)
     fake.raise_for_status.side_effect = requests.HTTPError(f"{status} {msg}")
-    mocker.patch("commitguard.git_utils.requests.Session.get", return_value=fake)
+    mocker.patch("commitguard.githubclient.requests.Session.get", return_value=fake)
 
     ghc = GitHubClient("")
 
@@ -163,7 +163,7 @@ def test_api_errors(mocker, caplog, status, msg):
 
 
 def test_auth_api_json_error(mocker, caplog):
-    mocker.patch("commitguard.git_utils.os.getenv", return_value="token")
+    mocker.patch("commitguard.githubclient.os.getenv", return_value="token")
 
     fake = mocker.Mock()
     fake.status_code = 200
@@ -171,7 +171,7 @@ def test_auth_api_json_error(mocker, caplog):
     fake.headers = {"X-RateLimit-Limit": "60", "X-RateLimit-Remaining": "59"}
     fake.json.side_effect = ValueError("No JSON object could be decoded")
 
-    mocker.patch("commitguard.git_utils.requests.Session.get", return_value=fake)
+    mocker.patch("commitguard.githubclient.requests.Session.get", return_value=fake)
 
     ghc = GitHubClient("")
 
