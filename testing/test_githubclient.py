@@ -164,25 +164,25 @@ def test_auth_github_api(mocker, caplog):
 # #endregion
 #
 #
-# def test_auth_api_json_error(mocker, caplog):
-#     mocker.patch("commitguard.githubclient.os.getenv", return_value="token")
-#
-#     fake = mocker.Mock()
-#     fake.status_code = 200
-#     fake.text = "some text"
-#     fake.headers = {"X-RateLimit-Limit": "60", "X-RateLimit-Remaining": "59"}
-#     fake.json.side_effect = ValueError("No JSON object could be decoded")
-#
-#     mocker.patch("commitguard.githubclient.requests.Session.get", return_value=fake)
-#
-#     ghc = GitHubClient("")
-#
-#     with caplog.at_level("ERROR"):
-#         with pytest.raises(SystemExit) as e:
-#             ghc.authorize_github_api()
-#
-#     assert e.value.code == 1
-#     assert "Auth failed: response is not valid JSON" in caplog.text
+def test_auth_api_json_error(mocker, caplog):
+    mocker.patch("commitguard.githubclient.os.getenv", return_value="token")
+
+    fake = mocker.Mock()
+    fake.status_code = 200
+    fake.text = "some text"
+    fake.headers = {"X-RateLimit-Limit": "60", "X-RateLimit-Remaining": "59"}
+    fake.json.side_effect = ValueError("No JSON object could be decoded")
+
+    mocker.patch("commitguard.githubclient.requests.Session.get", return_value=fake)
+
+    ghc = GitHubClient("")
+
+    with caplog.at_level("ERROR"):
+        with pytest.raises(SystemExit) as e:
+            ghc.authorize_github_api()
+
+    assert e.value.code == 1
+    assert "Auth failed: response is not valid JSON" in caplog.text
 
 
 
