@@ -1,5 +1,5 @@
 from pytest_mock import mocker
-from commitguard import git_utils
+from commitguard import githubclient
 import pytest
 import requests
 import os
