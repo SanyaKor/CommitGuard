@@ -8,7 +8,6 @@ from commitguard.githubclient import GitHubClient
 
 
 
-
 def test_auth_github_api(mocker, caplog):
     mocker.patch("commitguard.githubclient.os.getenv", return_value="token")
 
@@ -25,7 +24,6 @@ def test_auth_github_api(mocker, caplog):
         ghc.authorize_github_api()
 
     assert "Auth in Github API successful" in caplog.text
-
 
 #region FETCHING COMMITS
 def test_github_fetching_sync(mocker, caplog):
@@ -65,14 +63,14 @@ def test_github_fetching_sync(mocker, caplog):
     mocker.patch("commitguard.githubclient.requests.Session.get", side_effect=get_side_effect)
 
     ghc = GitHubClient("")
-
+    number_of_commits = 2
     with caplog.at_level("INFO"):
         ghc.authorize_github_api()
-        ghc.run_fetching_sync(2)
+        ghc.run_fetching_sync(number_of_commits)
 
     assert "Auth in Github API successful" in caplog.text
-    assert "Fetching commit(s)" in caplog.text
-    assert "Successfully fetched" in caplog.text
+    assert f"Fetching {number_of_commits} commit(s) ..." in caplog.text
+    assert f"Successfully fetched {number_of_commits} commit(s)" in caplog.text
 
 @pytest.mark.asyncio
 async def test_auth_then_fetching_async_logs_only(mocker, caplog):
@@ -113,14 +111,16 @@ async def test_auth_then_fetching_async_logs_only(mocker, caplog):
     mocker.patch("commitguard.githubclient.requests.Session.get", side_effect=get_side_effect)
 
     ghc = GitHubClient("https://github.com/owner/repo.git")
+    number_of_commits = 2
+
 
     with caplog.at_level("INFO"):
         ghc.authorize_github_api()
-        await ghc.run_fetching_async(2,10)
+        await ghc.run_fetching_async(number_of_commits,10)
 
     assert "Auth in Github API successful" in caplog.text
-    assert "Fetching commit(s)" in caplog.text
-    assert "Successfully fetched" in caplog.text
+    assert f"Fetching {number_of_commits} commit(s) ..." in caplog.text
+    assert f"Successfully fetched {number_of_commits} commit(s)" in caplog.text
 #endregion
 
 #region UNSUCCESSFUL AUTHORIZATION
@@ -161,7 +161,6 @@ def test_api_errors(mocker, caplog, status, msg):
     assert e.value.code == 1
     assert str(status) in caplog.text
 #endregion
-
 
 def test_auth_api_json_error(mocker, caplog):
     mocker.patch("commitguard.githubclient.os.getenv", return_value="token")
