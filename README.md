@@ -15,7 +15,7 @@ Install dependencies and the tool locally:
 
 ```bash
 pip install -r requirements.txt
-pip install -e 
+pip install -e .
 ```
 
 
