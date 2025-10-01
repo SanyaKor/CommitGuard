@@ -98,6 +98,6 @@ Planned improvements and next steps for CommitGuard:
 
 - Expand leak parser rules with more patterns (cloud provider keys, OAuth tokens, etc.)  
 - Refine entropy-based detection to reduce false positives  
-- Optimize LLM integration (batch processing, better scoring)  
+- Optimize LLM integration (batch processing, better scoring, MCP, data vectorisation + db hosting(chroma))  
 - Add more tests for leak parser and LLM workflow  
 - Provide GitHub Actions workflow for automatic scanning on pull requests  
