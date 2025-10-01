@@ -1,6 +1,10 @@
 # CommitGuard
 
-**CommitGuard** is a CLI tool to scan GitHub repositories for **leaks, insecure configs, and weak spots** in commit history. It fetches commits and checks them for **hardcoded secrets, API tokens, passwords, private keys, etc.
+
+CommitGuard is a CLI tool to scan GitHub repositories for leaks, insecure configs, and weak spots in commit history.  
+It fetches commits and checks them for **hardcoded secrets, API tokens, passwords, private keys, etc.**  
+
+The analysis is **LLM-powered**, meaning suspicious findings can be further classified into risk levels (HIGH/MEDIUM/LOW) by a language model (via LangChain, with support for OpenAI or other providers).
 
 ---
 
