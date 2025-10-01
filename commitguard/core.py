@@ -3,7 +3,7 @@ import asyncio
 import json
 from .leaks_parser import LeaksParser
 from .githubclient import GitHubClient
-from typing import List
+from typing import List, Dict, Any
 from .llm import run_single_querry, build_prompt, llm
 from .logging_config import get_logger
 from collections import Counter
@@ -11,26 +11,14 @@ from collections import Counter
 log = get_logger(__name__)
 
 
-def save_llm_results_to_json(commits_data, content: str, filepath: str = "output.json") -> None:
-    results: List[dict] = []
 
-
-    for line in content.splitlines():
-        line = line.strip()
-        if not line or line.lower().startswith("ok"):
-            continue
-
-        if ":" in line:
-            level, msg = line.split(":", 1)
-            results.append({
-                "level": level.strip().upper(),
-                "message": msg.strip()
-            })
-        else:
-            results.append({"level": "UNKNOWN", "message": line})
-
-    with open(filepath, "w", encoding="utf-8") as f:
-        json.dump(results, f, indent=2, ensure_ascii=False)
+def save_results_to_file(suspicious_commits, filename="suspicious_commits.json"):
+    try:
+        with open(filename, "w", encoding="utf-8") as f:
+            json.dump(suspicious_commits, f, indent=4, ensure_ascii=False)
+        log.info(f"Suspicious commits saved to {filename}")
+    except Exception as e:
+        log.error(f"Failed to save results: {e}")
 
 
 def main():
@@ -51,22 +39,45 @@ def main():
     c_data = asyncio.run(conc_part())
     leaksparser = LeaksParser()
 
-    suspicious_lines_list :List[str] = []
+    suspicious_commits: List[Dict[str, Any]] = []
 
     for commit_hash, details in c_data.items():
-        c_diffs = ghc.get_commit_diffs(commit_hash)
-        c_diffs_code = [item["code"] for group in ("additions", "deletions") for item in c_diffs[group]]
-        suspicious_lines = leaksparser.run_scanner(c_diffs_code)
-        suspicious_lines_list.extend(suspicious_lines)
 
-    if not suspicious_lines_list:
-        log.info("Leaks parser did not find anything suspicious")
-        return
+        c_details = ghc.get_commit_details(commit_hash)
 
-    log.info(f"Leaks parser found {len(suspicious_lines_list)} suspicious line(s), sending to LLM for analysis")
-    query = build_prompt(suspicious_lines_list)
+        diffs = [
+            (item["code"], item["location"])
+            for section in ("additions", "deletions")
+            for item in c_details[section]
+        ]
+
+        codes = [c for c, _ in diffs]
+        suspicious_for_commit = leaksparser.run_scanner(codes)
+
+        for s_commit in suspicious_for_commit:
+            for code, loc in diffs:
+                if code == s_commit:
+                    record = {
+                        "line": s_commit,
+                        "location": loc,
+                        "author": c_details["author"],
+                        "date": c_details["date"],
+                        "commit_message": c_details["commit_message"],
+                        "commit_sha": c_details.get("sha") or commit_hash,
+                    }
+                    suspicious_commits.append(record)
+
+    if not suspicious_commits:
+        log.info("Leaks parser did not find anything suspicious. Exiting...")
+        return None
+
+    log.info(f"Leaks parser found {len(suspicious_commits)} suspicious line(s), sending to LLM for analysis")
+
+    suspicious_texts: List[str] = [r["line"] for r in suspicious_commits]
+
+    query = build_prompt(suspicious_texts)
     response = run_single_querry(llm, query)
-
+    #
     lines = [l.strip() for l in response.splitlines() if l.strip()]
     levels = []
 
@@ -84,14 +95,23 @@ def main():
         log.debug(f"LLM: {line}")
 
     stats = Counter(levels)
-    log.debug(
+
+    log.info(
         f"LLM summary: "
         f"{stats.get('HIGH', 0)} HIGH, "
         f"{stats.get('MEDIUM', 0)} MEDIUM, "
         f"{stats.get('LOW', 0)} LOW, "
         f"{stats.get('OK', 0)} OK"
     )
-    print(response)
+    for result in response:
+        for item in suspicious_commits:
+            if item["line"] in result:  # проверяем вхождение текста
+                item["llm_response"] = result
+                break
+
+    save_results_to_file(suspicious_commits)
+
+    return None
 
 if __name__ == "__main__":
     main()

@@ -157,7 +157,7 @@ class GitHubClient:
                 print("  [-] Deletions: (none)")
     #endregion
 
-    def get_commit_diffs(self, commit_hash: str):
+    def get_commit_details(self, commit_hash: str):
 
         c_data = None
 
@@ -233,9 +233,13 @@ class GitHubClient:
                         deletion_line_number += 1
                     continue
 
+
         details = {
             "additions": additions,
-            "deletions": deletions
+            "deletions": deletions,
+            "author": c_data.get("author_name"),
+            "date": c_data.get("date"),
+            "commit_message": c_data.get("commit_message"),
         }
 
         return details
