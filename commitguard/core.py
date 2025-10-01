@@ -76,9 +76,10 @@ def main():
 
     suspicious_texts: List[str] = [r["line"] for r in suspicious_commits]
 
+    #TODO weak place, have to check amount of symbols (for batches)
     query = build_prompt(suspicious_texts)
     response = run_single_querry(llm, query)
-    #
+
     lines = [l.strip() for l in response.splitlines() if l.strip()]
     levels = []
 

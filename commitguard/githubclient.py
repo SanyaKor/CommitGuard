@@ -122,40 +122,7 @@ class GitHubClient:
 
         return commit_data
 
-    def verify_commits_fetched(self, commit_hashes: List[str], commit_data: Dict[str, Dict]) -> bool:
-
-        missing = [s for s in commit_hashes if s not in commit_data]
-        if missing:
-            return False
-
-        log.debug(f"ОК: {len(commit_data)}/{len(commit_hashes)} commits fetched")
-        return True
-
-    def print_commits(self, commits_container: Dict[str, Dict[str, List[Tuple[str, str]]]] = {}):
-        if not commits_container:
-            print("empty container")
-            return
-
-        for sha, changes in commits_container.items():
-            print(f"\n=== Commit {sha} ===")
-
-            additions = changes.get("additions", [])
-            deletions = changes.get("deletions", [])
-
-            if additions:
-                print("  [+] Additions:")
-                for loc, text in additions:
-                    print(f"    + {loc}: {text}")
-            else:
-                print("  [+] Additions: (none)")
-
-            if deletions:
-                print("  [-] Deletions:")
-                for loc, text in deletions:
-                    print(f"    - {loc}: {text}")
-            else:
-                print("  [-] Deletions: (none)")
-    #endregion
+    ###TODO verification for async fetching
 
     def get_commit_details(self, commit_hash: str):
 
@@ -243,8 +210,7 @@ class GitHubClient:
         }
 
         return details
-
-
+    #endregion
 
     # region PRIVATE methods
 

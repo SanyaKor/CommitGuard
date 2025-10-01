@@ -1,5 +1,4 @@
 import logging
-from collections import Counter
 from langchain_openai import ChatOpenAI
 import os
 from dotenv import load_dotenv
@@ -65,3 +64,5 @@ def run_single_querry(llm: ChatOpenAI, prompt: str) -> str:
         error_msg = f"[ERROR] {type(e).__name__}: {e}"
         log.error(error_msg)
         return error_msg
+
+###TODO async requests
