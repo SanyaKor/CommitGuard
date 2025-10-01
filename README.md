@@ -57,7 +57,8 @@ commitguard --repo https://github.com/owner/repo.git --n 5 --out output.json
     "author": "octocat",
     "date": "2025-09-30T12:00:00Z",
     "commit_message": "fix db connection",
-    "llm_response": "HIGH: hardcoded password"
+    "llm_response": "HIGH: hardcoded password",
+    "commit_sha": "xxxxxxxxxxxxxxxxxxxxxx"
   }
 ]
 ```
