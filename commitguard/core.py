@@ -25,6 +25,7 @@ def main():
     parser = argparse.ArgumentParser(prog="commitguard", description="Scan github repository for commits (searching for some leaks / weak / insecure places)")
     parser.add_argument("--repo", required=True, help="URL GitHub-repo (HTTPS or SSH)")
     parser.add_argument("--n", required=True, help="Amount of commits to fetch [1, 100]")
+    parser.add_argument("--out", required=True, help="Output json file name(default - suspicious_commits.json)")
 
     args = parser.parse_args()
 
@@ -109,7 +110,7 @@ def main():
                 item["llm_response"] = result
                 break
 
-    save_results_to_file(suspicious_commits)
+    save_results_to_file(suspicious_commits, args.out)
 
     return None
 
