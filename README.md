@@ -24,7 +24,7 @@ pip install -e
 Run via CLI:.
 
 ```bash
-commitguard --repo <GITHUB_REPO_URL> --n <NUMBER_OF_COMMITS>
+commitguard --repo <GITHUB_REPO_URL> --n <NUMBER_OF_COMMITS> --out <OUTPUT_JSON_FILE_NAME>
 ```
 
 ### Arguments
