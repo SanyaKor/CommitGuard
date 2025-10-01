@@ -27,8 +27,7 @@ class LeaksParser:
     COMPILED_RULES = [re.compile(rx) for _, rx in RULES]
 
 
-    def __init__(self, filename : str):
-        self.__filename = filename
+    def __init__(self):
         log.info("Initializing Leaks parser")
 
     def run_scanner(self, lines : List[str]):

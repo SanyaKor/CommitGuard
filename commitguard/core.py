@@ -1,5 +1,6 @@
 import argparse
 import asyncio
+import json
 from .leaks_parser import LeaksParser
 from .githubclient import GitHubClient
 from typing import List
@@ -8,6 +9,29 @@ from .logging_config import get_logger
 from collections import Counter
 
 log = get_logger(__name__)
+
+
+def save_llm_results_to_json(commits_data, content: str, filepath: str = "output.json") -> None:
+    results: List[dict] = []
+
+
+    for line in content.splitlines():
+        line = line.strip()
+        if not line or line.lower().startswith("ok"):
+            continue
+
+        if ":" in line:
+            level, msg = line.split(":", 1)
+            results.append({
+                "level": level.strip().upper(),
+                "message": msg.strip()
+            })
+        else:
+            results.append({"level": "UNKNOWN", "message": line})
+
+    with open(filepath, "w", encoding="utf-8") as f:
+        json.dump(results, f, indent=2, ensure_ascii=False)
+
 
 def main():
     parser = argparse.ArgumentParser(prog="commitguard", description="Scan github repository for commits (searching for some leaks / weak / insecure places)")
@@ -20,28 +44,27 @@ def main():
     ghc.authorize_github_api()
 
     async def conc_part():
-        commit_hashes, commit_data, delta_time = await ghc.run_fetching_async(int(args.n), 10)
-        return commit_hashes, commit_data, delta_time
+        commit_data = await ghc.run_fetching_async(int(args.n), 10)
+        return commit_data
 
-    c_hashes, c_data, time = asyncio.run(conc_part())
-    leaksparser = LeaksParser("")
 
-    suspicious_text_commits = []
-    all_suspicious_lines :List[str] = []
+    c_data = asyncio.run(conc_part())
+    leaksparser = LeaksParser()
 
-    for hash in c_hashes:
-        c_diffs = ghc.get_commit_diffs(c_data, hash)
-        diffs_text = ghc.get_commit_diffs_text(c_diffs, deletions_included = False)
-        suspicious_lines = leaksparser.run_scanner(diffs_text)
-        all_suspicious_lines.extend(suspicious_lines)
-        suspicious_text_commits.append([hash, suspicious_lines])
+    suspicious_lines_list :List[str] = []
 
-    if not all_suspicious_lines:
+    for commit_hash, details in c_data.items():
+        c_diffs = ghc.get_commit_diffs(commit_hash)
+        c_diffs_code = [item["code"] for group in ("additions", "deletions") for item in c_diffs[group]]
+        suspicious_lines = leaksparser.run_scanner(c_diffs_code)
+        suspicious_lines_list.extend(suspicious_lines)
+
+    if not suspicious_lines_list:
         log.info("Leaks parser did not find anything suspicious")
         return
 
-    log.info(f"Leaks parser found {len(all_suspicious_lines)} suspicious line(s), sending to LLM for analysis")
-    query = build_prompt(all_suspicious_lines)
+    log.info(f"Leaks parser found {len(suspicious_lines_list)} suspicious line(s), sending to LLM for analysis")
+    query = build_prompt(suspicious_lines_list)
     response = run_single_querry(llm, query)
 
     lines = [l.strip() for l in response.splitlines() if l.strip()]
