@@ -39,9 +39,9 @@ print("hello world")
 requests.get(url, verify=False)
 
 Output:
-HIGH: hardcoded DB password 
+HIGH: hardcoded DB password - DB_PASSWORD=supersecret123
 ok
-MEDIUM: insecure TLS verification disabled
+MEDIUM: insecure TLS verification disabled - requests.get(url, verify=False)
 
 Now analyze the following lines:
 

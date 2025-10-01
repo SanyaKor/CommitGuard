@@ -8,7 +8,7 @@ log = get_logger(__name__)
 class LeaksParser:
     TEST_WORDS = [
         "test", "tests", "example", "examples", "sample", "dummy", "sandbox",
-        "dev", "staging", "local", "ci", "fixture", "mock", "demo", "placeholder"
+        "dev", "staging", "local", "ci", "fixture", "mock", "demo", "placeholder", "fake", "password", "supersecret"
     ]
 
     RULES: List[Tuple[str, str]] = [
