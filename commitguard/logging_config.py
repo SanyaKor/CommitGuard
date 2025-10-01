@@ -6,6 +6,7 @@ def init_logging():
         level=level,
         format="%(asctime)s [%(levelname)s] %(message)s"
     )
+    logging.getLogger("httpx").setLevel(logging.WARNING)
 
 def get_logger(name: str):
     return logging.getLogger(name)

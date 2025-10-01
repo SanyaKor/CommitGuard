@@ -61,7 +61,7 @@ def main():
         log.debug(f"LLM: {line}")
 
     stats = Counter(levels)
-    log.info(
+    log.debug(
         f"LLM summary: "
         f"{stats.get('HIGH', 0)} HIGH, "
         f"{stats.get('MEDIUM', 0)} MEDIUM, "
