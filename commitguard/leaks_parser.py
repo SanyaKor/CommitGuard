@@ -55,7 +55,7 @@ class LeaksParser:
                 log.debug(f"  [+] added from ENTROPY: {line}")
 
         if not results:
-            log.info("Nothing suspicious detected")
+            log.debug("Nothing suspicious detected")
         return results
 
     def __lines_matching_rules(self, lines: List[str]) -> List[str]:
