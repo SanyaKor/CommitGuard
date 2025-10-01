@@ -1,7 +1,6 @@
 # CommitGuard
 
-**CommitGuard** is a CLI tool to scan GitHub repositories for **leaks, insecure configs, and weak spots** in commit history.  
-It fetches commits and checks them for **hardcoded secrets, API tokens, passwords, private keys, etc.
+**CommitGuard** is a CLI tool to scan GitHub repositories for **leaks, insecure configs, and weak spots** in commit history. It fetches commits and checks them for **hardcoded secrets, API tokens, passwords, private keys, etc.
 
 ---
 
@@ -33,7 +32,7 @@ commitguard --repo <GITHUB_REPO_URL> --n <NUMBER_OF_COMMITS>
 
 ### Usage Examples
 
-**1. Scan the last 5 commits of a repo via HTTPS**
+** Scan the last 5 commits of a repo via HTTPS**
 ```bash
 commitguard --repo https://github.com/owner/repo.git --n 5 --out output.json
 ```
