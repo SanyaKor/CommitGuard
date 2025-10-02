@@ -4,7 +4,7 @@ import json
 from .leaks_parser import LeaksParser
 from .githubclient import GitHubClient
 from typing import List, Dict, Any
-from .llm import run_single_query, build_prompt, run_llm
+from .llm import run_llm
 from .logging_config import get_logger
 from collections import Counter
 
@@ -76,7 +76,6 @@ def main():
 
     suspicious_texts: List[str] = [r["line"] for r in suspicious_commits]
 
-    # #TODO weak place, have to check amount of symbols (for batches)
     response = run_llm(suspicious_texts)
 
     lines = [l.strip() for l in response.splitlines() if l.strip()]
