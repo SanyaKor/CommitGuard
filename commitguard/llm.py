@@ -122,10 +122,11 @@ def make_batches(text: List[str],
 
 
 
-def run_llm(text: List[str], async_requests = True):
+def run_llm(text: List[str], batch_size : int = 6000, token_factor : float = 0.3, async_requests = True):
 
-    log.info("Using default prompt")
-    batches = make_batches(text)
+    batches = make_batches(text, 6000, 0.3)
+    log.info(f"LLM Configuration - Batches:{len(batches)} (Batch Size:{batch_size}, Token factor: {token_factor}), Model:{llm.model_name})")
+    log.info("LLM: Running using default prompt")
 
     if async_requests :
         response = asyncio.run(run_batches_parallel(llm, batches))
@@ -133,6 +134,8 @@ def run_llm(text: List[str], async_requests = True):
         response = run_batches_sequential(llm, batches)
 
     results = "\n".join(response)
+
+    return results
 
 def build_prompt(text: str) -> str:
     return PROMPT_TEMPLATE.format(lines=text)
