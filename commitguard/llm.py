@@ -10,6 +10,7 @@ import sys
 load_dotenv()
 log = logging.getLogger(__name__)
 
+
 llm = ChatOpenAI(
     model="gpt-5",
     temperature=0,
@@ -71,19 +72,24 @@ def run_batches_sequential(llm: ChatOpenAI, batches: List[str]):
 
 async def run_batches_parallel(llm: ChatOpenAI, batches: List[str], concurrency: int = 10):
 
-    if len(batches) < concurrency:
-        concurrency = len(batches)
+    total = len(batches)
+    if total == 0:
+        return []
 
-    async def call_batch(batch: str, i: int) -> str:
-        try:
-            log.info(f"LLM: batch {i}/{len(batches)} in parallel")
-            r = await asyncio.to_thread(llm.invoke, batch)
-            return r.content
-        except Exception as e:
-            log.error(f"LLM: Error while running query {type(e).__name__}: {e}")
-            sys.exit(1)
+    concurrency = max(1, min(concurrency, total))
+    sem = asyncio.Semaphore(concurrency)
 
-    tasks = [call_batch(batch, i) for i, batch in enumerate(batches, start=1)]
+    async def call_batch(i: int, batch: str) -> str:
+        async with sem:
+            try:
+                log.info(f"LLM: Running batch {i}/{len(batches)} in parallel")
+                resp = await asyncio.to_thread(llm.invoke, batch)
+                return resp.content
+            except Exception as e:
+                log.error(f"LLM: Error while running query {type(e).__name__}: {e}")
+                sys.exit(1)
+
+    tasks = [asyncio.create_task(call_batch(i, batch)) for i, batch in enumerate(batches, start=1)]
     return await asyncio.gather(*tasks)
 
 
