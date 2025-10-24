@@ -65,7 +65,7 @@ commitguard --repo https://github.com/owner/repo.git --n 5 --out output.json
 
 ### Notes
 
-This program requires a valid GitHub API key AND LLM key(openai) token to post comments or interact with pull requests, dont forget to set your own personal access token as an environment variable:
+This program requires a valid GitHub API key AND LLM key(openai), dont forget to set your own personal access token as an environment variable:
 
 ```bash
 export GITHUB_TOKEN="your_personal_access_token_here"
