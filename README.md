@@ -63,6 +63,14 @@ commitguard --repo https://github.com/owner/repo.git --n 5 --out output.json
 ]
 ```
 
+### Notes
+
+This program requires a valid GitHub API key AND LLM key(openai) token to post comments or interact with pull requests, dont forget to set your own personal access token as an environment variable:
+
+```bash
+export GITHUB_TOKEN="your_personal_access_token_here"
+export OPEN_AI_API_KEY=sk-...
+```
 
 ---
 ## LLM Configuration (pluggable via LangChain)
@@ -71,10 +79,9 @@ CommitGuard uses LangChain, so you can plug **any chat model** with a LangChain 
 OpenAI, Ollama, AnthropicLLM, ... etc.
 
 ### Quick switch (env-based)
-Set the model and API key via env:
+Set API key via env:
 ```bash
 export OPEN_AI_API_KEY=sk-...
-export COMMITGUARD_MODEL=gpt-4o-mini
 ```
 
 ## Tests
