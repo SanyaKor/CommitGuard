@@ -34,5 +34,6 @@ runs:
         REPO: ${{ github.repository }}
         PR_NUMBER: ${{ github.event.pull_request.number }}
         OPEN_AI_API_KEY: ${{ env.OPEN_AI_API_KEY }}
+        BOT_PAT: ${{ env.BOT_PAT }}
       run: |
         commitguard --repo "https://github.com/${{ github.repository }}" --n 10 --nofile
