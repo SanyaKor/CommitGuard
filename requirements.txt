@@ -3,3 +3,5 @@ python-dotenv
 pytest
 pytest-mock
 pytest-asyncio
+langchain-openai
+langchain-core
