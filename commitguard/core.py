@@ -104,6 +104,7 @@ def main():
 
     if not suspicious_commits:
         log.info("Leaks parser did not find anything suspicious. Exiting...")
+        write_pr_msg()
         return None
 
     log.info(f"Leaks parser found {len(suspicious_commits)} suspicious line(s), sending to LLM for analysis")
