@@ -41,6 +41,8 @@ def test_github_fetching_sync(mocker, caplog):
     ]
     fake_commits.headers = {}
 
+
+    
     ####################################################
     fake_detail_abc = mocker.Mock(status_code=200)
     fake_detail_def = mocker.Mock(status_code=200)
