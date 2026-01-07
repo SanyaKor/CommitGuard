@@ -15,6 +15,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Post PR comment
-        uses: SanyaKor/pr-bot@v1
+        uses: SanyaKor/CommitGuard@v1
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
