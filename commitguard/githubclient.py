@@ -31,7 +31,7 @@ class GitHubClient:
     #region PUBLIC methods
     def authorize_github_api(self):
         load_dotenv()
-        github_token = os.getenv("GITHUB_TOKEN")
+        github_token = os.getenv("BOT_PAT")
 
         self.__session = requests.Session()
 
