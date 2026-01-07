@@ -11,7 +11,6 @@ from collections import Counter
 log = get_logger(__name__)
 
 
-
 def save_results_to_file(suspicious_commits, filename="suspicious_commits.json"):
     try:
         with open(filename, "w", encoding="utf-8") as f:
@@ -26,7 +25,11 @@ def main():
     parser.add_argument("--repo", required=True, help="URL GitHub-repo (HTTPS or SSH)")
     parser.add_argument("--n", required=True, help="Amount of commits to fetch [1, 100]")
     parser.add_argument("--out", required=True, help="Output json file name(default - suspicious_commits.json)")
-
+    parser.add_argument(
+        "--nofile",
+        action="store_true",
+        help="Do not save output to file"
+    )
     args = parser.parse_args()
 
     ghc = GitHubClient(args.repo)
@@ -109,8 +112,10 @@ def main():
                 item["llm_response"] = result
                 break
 
-    save_results_to_file(suspicious_commits, args.out)
+    if args.nofile == False:
+        save_results_to_file(suspicious_commits, args.out)
 
+    print("work done")
     return None
 
 if __name__ == "__main__":
