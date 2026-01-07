@@ -33,5 +33,6 @@ runs:
         GITHUB_TOKEN: ${{ inputs.github-token }}
         REPO: ${{ github.repository }}
         PR_NUMBER: ${{ github.event.pull_request.number }}
+        OPEN_AI_API_KEY: ${{ secrets.OPEN_AI_API_KEY }}
       run: |
         commitguard --repo "${{ github.repository }}" --n 10 --nofile
