@@ -18,3 +18,5 @@ jobs:
         uses: SanyaKor/CommitGuard@v1
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
+        env:
+          OPEN_AI_API_KEY: ${{ secrets.OPEN_AI_API_KEY }}
