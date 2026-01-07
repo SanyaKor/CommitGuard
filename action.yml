@@ -36,4 +36,4 @@ runs:
         OPEN_AI_API_KEY: ${{ env.OPEN_AI_API_KEY }}
         BOT_PAT: ${{ env.BOT_PAT }}
       run: |
-        commitguard --repo "https://github.com/${{ github.repository }}" --n 10 --nofile
+        commitguard --repo "https://github.com/${{ github.repository }}" --n 60 --nofile

@@ -12,14 +12,14 @@ import os, json, urllib.request, urllib.error
 log = get_logger(__name__)
 
 
-def write_pr_msg():
+def write_pr_msg(msg: str = ""):
 
     repo = os.environ["REPO"]
     pr = os.environ["PR_NUMBER"]
     token = os.environ["GITHUB_TOKEN"]
 
     url = f"https://api.github.com/repos/{repo}/issues/{pr}/comments"
-    data = json.dumps({"body": "Work Done"}).encode()
+    data = json.dumps({"body": msg}).encode()
 
     req = urllib.request.Request(
         url, data=data, method="POST",
@@ -104,7 +104,7 @@ def main():
 
     if not suspicious_commits:
         log.info("Leaks parser did not find anything suspicious. Exiting...")
-        write_pr_msg()
+        write_pr_msg("Leaks parser did not find anything suspicious. Exiting...")
         return None
 
     log.info(f"Leaks parser found {len(suspicious_commits)} suspicious line(s), sending to LLM for analysis")
@@ -147,7 +147,13 @@ def main():
     if args.nofile == False:
         save_results_to_file(suspicious_commits, args.out)
 
-    write_pr_msg()
+    order = ["HIGH", "MEDIUM", "LOW", "OK"]
+
+    summary = f"Leaks parser found {len(suspicious_commits)} suspicious line(s), sending to LLM for analysis"
+    summary += "\nLLM summary: " + ", ".join(
+        f"{stats.get(level, 0)} {level}" for level in order
+    )
+    write_pr_msg(summary)
     return None
 
 if __name__ == "__main__":
