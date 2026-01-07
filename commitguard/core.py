@@ -7,8 +7,37 @@ from typing import List, Dict, Any
 from .llm import run_llm
 from .logging_config import get_logger
 from collections import Counter
+import os, json, urllib.request, urllib.error
 
 log = get_logger(__name__)
+
+
+def write_pr_msg():
+
+    repo = os.environ["REPO"]
+    pr = os.environ["PR_NUMBER"]
+    token = os.environ["GITHUB_TOKEN"]
+
+    url = f"https://api.github.com/repos/{repo}/issues/{pr}/comments"
+    data = json.dumps({"body": "Work Done"}).encode()
+
+    req = urllib.request.Request(
+        url, data=data, method="POST",
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Accept": "application/vnd.github+json",
+            "Content-Type": "application/json",
+            "User-Agent": "ci-external-scripts"
+        }
+    )
+
+    try:
+        with urllib.request.urlopen(req) as r:
+            print("Status:", r.status)
+            print("Comment posted.") if r.status == 201 else print("Unexpected response.")
+    except urllib.error.HTTPError as e:
+        print("API error:", e.code, e.read().decode())
+        raise SystemExit(1)
 
 
 def save_results_to_file(suspicious_commits, filename="suspicious_commits.json"):
@@ -24,7 +53,7 @@ def main():
     parser = argparse.ArgumentParser(prog="commitguard", description="Scan github repository for commits (searching for some leaks / weak / insecure places)")
     parser.add_argument("--repo", required=True, help="URL GitHub-repo (HTTPS or SSH)")
     parser.add_argument("--n", required=True, help="Amount of commits to fetch [1, 100]")
-    parser.add_argument("--out", required=True, help="Output json file name(default - suspicious_commits.json)")
+    parser.add_argument("--out", help="Output json file name(default - suspicious_commits.json)")
     parser.add_argument(
         "--nofile",
         action="store_true",
@@ -33,7 +62,9 @@ def main():
     args = parser.parse_args()
 
     ghc = GitHubClient(args.repo)
+
     ghc.authorize_github_api()
+
 
     async def conc_part():
         commit_data = await ghc.run_fetching_async(int(args.n), 10)
@@ -115,7 +146,7 @@ def main():
     if args.nofile == False:
         save_results_to_file(suspicious_commits, args.out)
 
-    print("work done")
+    write_pr_msg()
     return None
 
 if __name__ == "__main__":
