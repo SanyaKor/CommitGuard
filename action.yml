@@ -35,4 +35,4 @@ runs:
         PR_NUMBER: ${{ github.event.pull_request.number }}
         OPEN_AI_API_KEY: ${{ env.OPEN_AI_API_KEY }}
       run: |
-        commitguard --repo "${{ github.repository }}" --n 10 --nofile
+        commitguard --repo "https://github.com/${{ github.repository }}" --n 10 --nofile
