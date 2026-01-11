@@ -9,7 +9,7 @@ The analysis is **LLM-powered**, meaning suspicious findings can be further clas
 
 ## Requirements
 
-- Python **3.10+**
+- Python **3.12+**
 
 Install dependencies and the tool locally:
 
@@ -69,7 +69,7 @@ This program requires a valid GitHub API key AND LLM key(openai), dont forget to
 
 ```bash
 export GH_PAT="your_personal_access_token_here"
-export OPEN_AI_API_KEY=sk-...
+export OPENAI_API_KEY=sk-...
 ```
 
 ---

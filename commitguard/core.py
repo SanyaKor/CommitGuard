@@ -63,8 +63,7 @@ def save_results_to_file(suspicious_commits, filename="suspicious_commits.json")
         log.error(f"Failed to save results: {e}")
 
 
-def \
-        main():
+def main():
     parser = argparse.ArgumentParser(prog="commitguard", description="Scan github repository for commits (searching for some leaks / weak / insecure places)")
     parser.add_argument("--repo", required=True, help="URL GitHub-repo (HTTPS or SSH)")
     parser.add_argument("--n", required=True, help="Amount of commits to fetch [1, 100]")
@@ -132,7 +131,7 @@ def \
     suspicious_texts: List[str] = [r["line"] for r in suspicious_commits]
 
     response = run_llm(suspicious_texts)
-
+    print(response)
     lines = [l.strip() for l in response.splitlines() if l.strip()]
     levels = []
 
