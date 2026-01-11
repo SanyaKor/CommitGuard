@@ -37,7 +37,7 @@ runs:
         OPEN_AI_API_KEY: ${{ env.OPENAI_API_KEY }}
         GH_PAT: ${{ env.GH_PAT }}
       run: |
-        commitguard --repo "https://github.com/${{ github.repository }}" --n 60
+        commitguard --repo "https://github.com/${{ github.repository }}" --n  ${{ github.event.pull_request.commits }}
         
         if [ -f "$GITHUB_ACTION_PATH/suspicious_commits.json" ]; then
           cp "$GITHUB_ACTION_PATH/suspicious_commits.json" "$GITHUB_WORKSPACE/suspicious_commits.json"

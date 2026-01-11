@@ -140,7 +140,6 @@ def main():
     suspicious_texts: List[str] = [r["line"] for r in suspicious_commits]
 
     response = run_llm(suspicious_texts)
-    print(response)
     lines = [l.strip() for l in response.splitlines() if l.strip()]
     levels = []
 

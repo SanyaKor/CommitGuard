@@ -1,6 +1,5 @@
 # CommitGuard
 
-
 CommitGuard is a CLI tool to scan GitHub repositories for leaks, insecure configs, and weak spots in commit history. It fetches commits and checks them for **hardcoded secrets, API tokens, passwords, private keys, etc.**  
 
 The analysis is **LLM-powered**, meaning suspicious findings can be further classified into risk levels (HIGH/MEDIUM/LOW) by a language model (via LangChain, with support for OpenAI or other providers).
@@ -63,6 +62,7 @@ commitguard --repo https://github.com/owner/repo.git --n 5 --out output.json
 ]
 ```
 
+
 ### Notes
 
 This program requires a valid GitHub API key AND LLM key(openai), dont forget to set your own personal access token as an environment variable:
@@ -81,7 +81,7 @@ OpenAI, Ollama, AnthropicLLM, ... etc.
 ### Quick switch (env-based)
 Set API key via env:
 ```bash
-export OPEN_AI_API_KEY=sk-...
+export OPENAI_API_KEY=sk-...
 ```
 
 ## Tests
