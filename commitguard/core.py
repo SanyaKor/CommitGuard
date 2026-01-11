@@ -11,8 +11,6 @@ import os, json, urllib.request, urllib.error
 log = get_logger(__name__)
 
 
-
-
 def write_pr_msg(msg: str = ""):
     if os.getenv("GITHUB_ACTIONS") != "true":
         log.info("PR: LOCAL RUN. Exiting..")
@@ -29,12 +27,15 @@ def write_pr_msg(msg: str = ""):
 
     run_url = f"https://github.com/{repo}/actions/runs/{run_id}"
 
+
     body = "\n".join([
-        "### Analysis report (LLM summary)",
+        "📎 **Full analysis report:** available in workflow artifacts → `commitguard-report`",
         "",
-        f"[Download artifact]({run_url})",
+        f"- View JSON report: {run_url}",
         "",
-        "Artifacts → `commitguard-report`"
+        "- Workflow artifacts: `commitguard-report`"
+        "",
+        "⚠️ **Recommendation:** review **High** and **Medium** findings before merging this PR."
     ])
 
     url = f"https://api.github.com/repos/{repo}/issues/{pr}/comments"
@@ -176,18 +177,40 @@ def main():
     order = ["HIGH", "MEDIUM", "LOW", "OK"]
 
     lines = []
-    lines.append("## CommitGuard run analysis:")
+
+    lines.append("## 🛡 CommitGuard — Security Scan Results")
+    lines.append("")
     lines.append("### 🔍 Leaks Parser Report")
     lines.append("")
     lines.append(f"**Suspicious lines found:** `{len(suspicious_commits)}`")
     lines.append("")
 
+    lines.append("| Severity | Count |")
+    lines.append("|---------|--------|")
+
     for level in order:
         count = stats.get(level, 0)
-        lines.append(f"- **{level.capitalize()}**: {count}")
+
+        if level.lower() == "high":
+            icon = "🔴"
+        elif level.lower() == "medium":
+            icon = "🟠"
+        elif level.lower() == "low":
+            icon = "🟡"
+        else:
+            icon = "🟢"
+
+        lines.append(f"| {icon} {level.capitalize()} | {count} |")
 
     lines.append("")
-    lines.append("➡️ All suspicious lines were sent to LLM for further analysis.")
+    lines.append("All suspicious lines were forwarded to the LLM for further analysis (via LangChain).")
+    lines.append("")
+    lines.append("---")
+    lines.append("")
+    lines.append("### 🤖 LLM Severity Classification")
+    lines.append("")
+    lines.append("Findings were analyzed by an LLM to reduce false positives and assess real security risk.")
+    lines.append("")
 
     summary = "\n".join(lines)
 
