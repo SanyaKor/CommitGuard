@@ -1,6 +1,5 @@
 import argparse
 import asyncio
-import json
 from .leaks_parser import LeaksParser
 from .githubclient import GitHubClient
 from typing import List, Dict, Any
@@ -40,7 +39,7 @@ def write_pr_msg(msg: str = ""):
 
     url = f"https://api.github.com/repos/{repo}/issues/{pr}/comments"
 
-    pr_msg = body if not msg else "\n".join([msg.rstrip(), "", body])
+    pr_msg = "Leaks parser did not find anything suspicious. Exiting..." if not msg else "\n".join([msg.rstrip(), "", body])
 
     data = json.dumps({"body": pr_msg}).encode("utf-8")
 
@@ -132,7 +131,7 @@ def main():
 
     if not suspicious_commits:
         log.info("Leaks parser did not find anything suspicious. Exiting...")
-        write_pr_msg("Leaks parser did not find anything suspicious. Exiting...")
+        write_pr_msg()
         return None
 
     log.info(f"Leaks parser found {len(suspicious_commits)} suspicious line(s), sending to LLM for analysis")
