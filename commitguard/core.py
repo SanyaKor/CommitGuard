@@ -49,18 +49,24 @@ def save_results_to_file(suspicious_commits, filename="suspicious_commits.json")
         log.error(f"Failed to save results: {e}")
 
 
-def main():
+def \
+        main():
     parser = argparse.ArgumentParser(prog="commitguard", description="Scan github repository for commits (searching for some leaks / weak / insecure places)")
     parser.add_argument("--repo", required=True, help="URL GitHub-repo (HTTPS or SSH)")
     parser.add_argument("--n", required=True, help="Amount of commits to fetch [1, 100]")
-    parser.add_argument("--out", help="Output json file name(default - suspicious_commits.json)")
+
+    parser.add_argument(
+        "--out",
+        default="suspicious_commits.json",
+        help="Output json file name (default: suspicious_commits.json)"
+    )
+
     parser.add_argument(
         "--nofile",
         action="store_true",
         help="Do not save output to file"
     )
     args = parser.parse_args()
-
     ghc = GitHubClient(args.repo)
 
     ghc.authorize_github_api()
