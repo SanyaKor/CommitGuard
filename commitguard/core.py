@@ -22,14 +22,11 @@ def write_pr_msg(msg: str = ""):
     run_url = f"https://github.com/{repo}/actions/runs/{run_id}"
 
     body = "\n".join([
-        "### 📎 CommitGuard artifact(llm json summary)",
+        "### Analysis report (LLM summary)",
         "",
-        "**Artifact name:** `commitguard-report`",
+        f"[Download artifact]({run_url})",
         "",
-        "Download:",
-        run_url,
-        "",
-        "Open the run → **Artifacts** → download `commitguard-report`."
+        "Artifacts → `commitguard-report`"
     ])
 
     url = f"https://api.github.com/repos/{repo}/issues/{pr}/comments"
