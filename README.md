@@ -2,7 +2,7 @@
 
 CommitGuard is a PR-focused security scanner that automatically analyzes Pull Requests for leaked secrets and insecure changes. It inspects the PR’s commits/diff for hardcoded credentials (API keys, tokens, passwords, private keys) and risky configurations (e.g., disabled TLS verification), then posts a structured report back to the PR.
 
-The analysis can be LLM-assisted via LangChain (OpenAI or other providers) to classify findings into risk levels (CRITICAL/HIGH/MEDIUM/LOW) and generate concise explanations and evidence.
+The analysis can be LLM-assisted via LangChain (OpenAI or other providers) to classify findings into risk levels (HIGH/MEDIUM/LOW) and generate concise explanations and evidence.
 
 ---
 
@@ -21,17 +21,6 @@ pip install -e .
 ## Usage 
 
 ## 🚀 Use CommitGuard on Pull Requests
-
-It scans PR commits/changes for: - API keys and tokens - passwords and
-credentials - private keys - insecure configurations
-(e.g. `verify=False`, `--insecure`)
-
-Findings can be classified by an LLM (via LangChain) into severity
-levels: ** HIGH / MEDIUM / LOW**.
-
-
-
-CommitGuard is designed to run automatically via GitHub Actions.
 
 ### 1. Fork the repository
 
