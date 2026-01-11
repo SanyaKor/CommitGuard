@@ -17,9 +17,26 @@ def write_pr_msg(msg: str = ""):
     repo = os.environ["REPO"]
     pr = os.environ["PR_NUMBER"]
     token = os.environ["GITHUB_TOKEN"]
+    run_id = os.environ["GITHUB_RUN_ID"]
+
+    run_url = f"https://github.com/{repo}/actions/runs/{run_id}"
+
+    body = "\n".join([
+        "## 📎 CommitGuard artifact",
+        "",
+        "**Artifact name:** `commitguard-report`",
+        "",
+        "Download:",
+        run_url,
+        "",
+        "Open the run → **Artifacts** → download `commitguard-report`."
+    ])
 
     url = f"https://api.github.com/repos/{repo}/issues/{pr}/comments"
-    data = json.dumps({"body": msg}).encode()
+
+    pr_msg = body if not msg else "\n".join([msg.rstrip(), "", body])
+
+    data = json.dumps({"body": pr_msg}).encode("utf-8")
 
     req = urllib.request.Request(
         url, data=data, method="POST",
@@ -155,10 +172,23 @@ def \
 
     order = ["HIGH", "MEDIUM", "LOW", "OK"]
 
-    summary = f"Leaks parser found {len(suspicious_commits)} suspicious line(s), sending to LLM for analysis"
-    summary += "\nLLM summary: " + ", ".join(
-        f"{stats.get(level, 0)} {level}" for level in order
-    )
+    lines = []
+    lines.append("## 🔍 Leaks Parser Report")
+    lines.append("")
+    lines.append(f"**Suspicious lines found:** `{len(suspicious_commits)}`")
+    lines.append("")
+    lines.append("### 📊 LLM Classification")
+    lines.append("")
+
+    for level in order:
+        count = stats.get(level, 0)
+        lines.append(f"- **{level.capitalize()}**: {count}")
+
+    lines.append("")
+    lines.append("➡️ All suspicious lines were sent to LLM for further analysis.")
+
+    summary = "\n".join(lines)
+
     write_pr_msg(summary)
     return None
 
