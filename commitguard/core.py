@@ -12,12 +12,21 @@ import os, json, urllib.request, urllib.error
 log = get_logger(__name__)
 
 
-def write_pr_msg(msg: str = ""):
 
-    repo = os.environ["REPO"]
-    pr = os.environ["PR_NUMBER"]
-    token = os.environ["GITHUB_TOKEN"]
-    run_id = os.environ["GITHUB_RUN_ID"]
+
+def write_pr_msg(msg: str = ""):
+    if os.getenv("GITHUB_ACTIONS") != "true":
+        log.info("PR: LOCAL RUN. Exiting..")
+        return
+
+    try:
+        repo = os.environ["REPO"]
+        pr = os.environ["PR_NUMBER"]
+        token = os.environ["GITHUB_TOKEN"]
+        run_id = os.environ["GITHUB_RUN_ID"]
+    except KeyError as e:
+        raise RuntimeError(f"Missing required CI env var: {e}") from e
+
 
     run_url = f"https://github.com/{repo}/actions/runs/{run_id}"
 
@@ -47,10 +56,10 @@ def write_pr_msg(msg: str = ""):
 
     try:
         with urllib.request.urlopen(req) as r:
-            print("Status:", r.status)
-            print("Comment posted.") if r.status == 201 else print("Unexpected response.")
+            log.info("Status:", r.status)
+            log.info("Comment posted.") if r.status == 201 else print("Unexpected response.")
     except urllib.error.HTTPError as e:
-        print("API error:", e.code, e.read().decode())
+        log.error("API error:", e.code, e.read().decode())
         raise SystemExit(1)
 
 
