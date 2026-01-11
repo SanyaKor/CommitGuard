@@ -19,5 +19,5 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
         env:
-          OPEN_AI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           GH_PAT: ${{ secrets.GH_PAT }}
