@@ -22,7 +22,7 @@ def write_pr_msg(msg: str = ""):
     run_url = f"https://github.com/{repo}/actions/runs/{run_id}"
 
     body = "\n".join([
-        "## 📎 CommitGuard artifact",
+        "### 📎 CommitGuard artifact(llm json summary)",
         "",
         "**Artifact name:** `commitguard-report`",
         "",
@@ -173,11 +173,10 @@ def \
     order = ["HIGH", "MEDIUM", "LOW", "OK"]
 
     lines = []
-    lines.append("## 🔍 Leaks Parser Report")
+    lines.append("## CommitGuard run analysis:")
+    lines.append("### 🔍 Leaks Parser Report")
     lines.append("")
     lines.append(f"**Suspicious lines found:** `{len(suspicious_commits)}`")
-    lines.append("")
-    lines.append("### 📊 LLM Classification")
     lines.append("")
 
     for level in order:
