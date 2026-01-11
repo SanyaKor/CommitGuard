@@ -1,8 +1,8 @@
 # CommitGuard
 
-CommitGuard is a CLI tool to scan GitHub repositories for leaks, insecure configs, and weak spots in commit history. It fetches commits and checks them for **hardcoded secrets, API tokens, passwords, private keys, etc.**  
+CommitGuard is a PR-focused security scanner that automatically analyzes Pull Requests for leaked secrets and insecure changes. It inspects the PR’s commits/diff for hardcoded credentials (API keys, tokens, passwords, private keys) and risky configurations (e.g., disabled TLS verification), then posts a structured report back to the PR.
 
-The analysis is **LLM-powered**, meaning suspicious findings can be further classified into risk levels (HIGH/MEDIUM/LOW) by a language model (via LangChain, with support for OpenAI or other providers).
+The analysis can be LLM-assisted via LangChain (OpenAI or other providers) to classify findings into risk levels (CRITICAL/HIGH/MEDIUM/LOW) and generate concise explanations and evidence.
 
 ---
 
@@ -18,7 +18,102 @@ pip install -e .
 ```
 
 
-## Usage
+## Usage 
+
+## 🚀 Use CommitGuard on Pull Requests
+
+It scans PR commits/changes for: - API keys and tokens - passwords and
+credentials - private keys - insecure configurations
+(e.g. `verify=False`, `--insecure`)
+
+Findings can be classified by an LLM (via LangChain) into severity
+levels: ** HIGH / MEDIUM / LOW**.
+
+
+
+CommitGuard is designed to run automatically via GitHub Actions.
+
+### 1. Fork the repository
+
+Fork this repository.
+
+### 2. Add required secrets
+
+In your forked repository:
+
+**Settings → Secrets and variables → Actions → New repository secret**
+
+Add the following secrets:
+
+#### `GH_PAT` --- GitHub Fine-grained Personal Access Token
+
+Used to read commit data (and private repos if needed).
+
+Recommended permissions: - Contents: Read - Pull requests: Read
+
+#### `OPENAI_API_KEY` --- OpenAI API key
+
+Used for LLM-based risk classification.
+
+> If you use another LLM provider (Ollama, Azure, etc.), configure the
+> corresponding environment variables instead.
+
+------------------------------------------------------------------------
+
+### 3. Add GitHub Actions workflow
+
+Create file:
+
+    .github/workflows/pr-automation.yml
+
+with the following content:
+
+``` yml
+name: PR Automation
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  issues: write
+  pull-requests: write
+  contents: read
+
+jobs:
+  bot:
+    name: Run CommitGuard
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run CommitGuard on PR
+        uses: Test/CommitGuard@v1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          GH_PAT: ${{ secrets.GH_PAT }}
+```
+
+------------------------------------------------------------------------
+
+### 4. Open or update a Pull Request
+
+On every PR update CommitGuard will automatically:
+
+-   analyze PR commits and changes
+-   detect leaked secrets and insecure configs
+-   classify findings by severity
+-   post a comment with results in the PR
+-   upload full JSON report as workflow artifact
+
+No manual steps are required.
+
+Example: 
+
+![Report example](docs/images/pr_example.png)
+
+
+## CLI usage
 
 Run via CLI:.
 
@@ -107,5 +202,4 @@ Planned improvements and next steps for CommitGuard:
 - Expand leak parser rules with more patterns (cloud provider keys, OAuth tokens, etc.)  
 - Refine entropy-based detection to reduce false positives  
 - Optimize LLM integration (batch processing, better scoring, MCP, data vectorisation + db hosting(chroma))  
-- Add more tests for leak parser and LLM workflow  
-- Provide GitHub Actions workflow for automatic scanning on pull requests  
+- Add more tests for leak parser and LLM workflow   
