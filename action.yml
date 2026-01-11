@@ -37,6 +37,11 @@ runs:
         BOT_PAT: ${{ env.BOT_PAT }}
       run: |
         commitguard --repo "https://github.com/${{ github.repository }}" --n 60
+        
+        if [ -f "$GITHUB_ACTION_PATH/suspicious_commits.json" ]; then
+          cp "$GITHUB_ACTION_PATH/suspicious_commits.json" "$GITHUB_WORKSPACE/suspicious_commits.json"
+        fi
+
         echo "Workspace: $GITHUB_WORKSPACE"
         ls -la
 
