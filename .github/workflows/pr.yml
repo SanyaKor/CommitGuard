@@ -20,4 +20,4 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
         env:
           OPEN_AI_API_KEY: ${{ secrets.OPEN_AI_API_KEY }}
-          BOT_PAT: ${{ secrets.BOT_PAT }}
+          GH_PAT: ${{ secrets.GH_PAT }}

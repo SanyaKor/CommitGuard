@@ -68,7 +68,7 @@ commitguard --repo https://github.com/owner/repo.git --n 5 --out output.json
 This program requires a valid GitHub API key AND LLM key(openai), dont forget to set your own personal access token as an environment variable:
 
 ```bash
-export GITHUB_TOKEN="your_personal_access_token_here"
+export GH_PAT="your_personal_access_token_here"
 export OPEN_AI_API_KEY=sk-...
 ```
 
