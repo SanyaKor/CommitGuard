@@ -1,5 +1,5 @@
 name: "PR CommitGuard Bot"
-description: "Runs python script on pull_request and can comment on PR"
+description: "PR-focused security scanner that automatically analyzes Pull Requests for leaked secrets and insecure changes."
 
 inputs:
   github-token:
