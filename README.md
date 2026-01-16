@@ -24,7 +24,7 @@ pip install -e .
 
 ### 1. Add required secrets
 
-In your forked repository:
+In your repository:
 
 **Settings → Secrets and variables → Actions → New repository secret**
 
