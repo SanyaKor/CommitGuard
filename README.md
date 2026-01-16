@@ -71,7 +71,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Run CommitGuard on PR
-        uses: Test/CommitGuard@v1
+        uses: SanyaKor/CommitGuard@v1
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
         env:
