@@ -22,11 +22,7 @@ pip install -e .
 
 ## 🚀 Use CommitGuard on Pull Requests
 
-### 1. Fork the repository
-
-Fork this repository.
-
-### 2. Add required secrets
+### 1. Add required secrets
 
 In your forked repository:
 
@@ -49,7 +45,7 @@ Used for LLM-based risk classification.
 
 ------------------------------------------------------------------------
 
-### 3. Add GitHub Actions workflow
+### 2. Add GitHub Actions workflow
 
 Create file:
 
@@ -85,7 +81,7 @@ jobs:
 
 ------------------------------------------------------------------------
 
-### 4. Open or update a Pull Request
+### 3. Open or update a Pull Request
 
 On every PR update CommitGuard will automatically:
 
