@@ -7,7 +7,6 @@ import os
 from commitguard.githubclient import GitHubClient
 
 
-
 def test_auth_github_api(mocker, caplog):
     mocker.patch("commitguard.githubclient.os.getenv", return_value="token")
 
