@@ -6,11 +6,31 @@ from typing import List, Dict, Any
 from .llm import run_llm, FindingsReport
 from .logging_config import get_logger
 from collections import Counter
+from pathlib import PurePosixPath
 import os, json, urllib.request, urllib.error
 
 log = get_logger(__name__)
 
 
+def is_test_file(filename: str) -> bool:
+    path = PurePosixPath(filename.lower())
+
+    test_directories = {
+        "test",
+        "tests",
+        "testing",
+        "__tests__",
+        "fixtures",
+        "__fixtures__"
+    }
+
+    return (
+        bool(test_directories.intersection(path.parts[:-1]))
+        or path.name.startswith("test_")
+        or path.stem.endswith("_test")
+        or path.stem.endswith(".test")
+        or path.stem.endswith(".spec")
+    )
 
 def attach_findings(records: list[dict[str, Any]], report: FindingsReport) -> list[dict[str, Any]]:
 
@@ -181,21 +201,25 @@ def main():
             for item in c_details[section]
         ]
 
-        codes = [c for c, _ in diffs]
-        suspicious_for_commit = leaksparser.run_scanner(codes)
+        for code, location in diffs:
+            finding = leaksparser.scan_line(code)
 
-        for s_commit in suspicious_for_commit:
-            for code, loc in diffs:
-                if code == s_commit:
-                    record = {
-                        "line": s_commit,
-                        "location": loc,
-                        "author": c_details["author"],
-                        "date": c_details["date"],
-                        "commit_message": c_details["commit_message"],
-                        "commit_sha": c_details.get("sha") or commit_hash,
-                    }
-                    suspicious_commits.append(record)
+            filename = location.rsplit(":", 1)[0]
+            if finding is None:
+                continue
+
+            record = {
+                "line": finding["redacted_code"],
+                "matches": finding["matches"],
+                "location": location,
+                "author": c_details["author"],
+                "date": c_details["date"],
+                "commit_message": c_details["commit_message"],
+                "commit_sha": commit_hash,
+                "is_test_file": is_test_file(filename)
+            }
+
+            suspicious_commits.append(record)
 
     if not suspicious_commits:
         log.info("Leaks parser did not find anything suspicious. Exiting...")
@@ -210,6 +234,8 @@ def main():
             {
                 "finding_id": record["finding_id"],
                 "code": record["line"],
+                "matches": record["matches"],
+                "is_test_file": record["is_test_file"]
             },
             ensure_ascii=False
         )

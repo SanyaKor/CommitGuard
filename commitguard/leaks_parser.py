@@ -6,12 +6,11 @@ import math
 log = get_logger(__name__)
 
 class LeaksParser:
-    TEST_WORDS = [
-        "test", "tests", "example", "examples", "sample", "dummy", "sandbox",
-        "dev", "staging", "local", "ci", "fixture", "mock", "demo", "placeholder", "fake", "password", "supersecret"
-    ]
 
     RULES: List[Tuple[str, str]] = [
+        ("UnquotedSecretAssignment", r"""(?im)^\s*(?:export\s+)?(?:[a-z0-9]+_)*(?:pass(?:word|wd)?|secret|token|api[_-]?key)(?:_[a-z0-9]+)*\s*[:=]\s*(?P<secret>[^\s'"\#]+)\s*(?:#.*)?$"""),
+        ("BearerAuthorization", r"""(?i)\bAuthorization\s*:\s*Bearer\s+(?P<secret>[A-Za-z0-9._~+/\-]+=*)"""),
+        ("BasicAuthorization", r"""(?i)\bAuthorization\s*:\s*Basic\s+(?P<secret>[A-Za-z0-9+/]+={0,2})"""),
         ("PrivateKeyBlock", r"-----BEGIN (?:RSA|DSA|EC|OPENSSH|PGP) PRIVATE KEY-----"),
         ("AWSAccessKeyID", r"\bAKIA[0-9A-Z]{16}\b"),
         ("GitHubToken", r"\b(?:ghp|gho|ghu|ghs|ghr)_[A-Za-z0-9]{36,251}\b"),
@@ -21,77 +20,98 @@ class LeaksParser:
         ("StripeLiveKey", r"\bsk_live_[0-9A-Za-z]{24,}\b"),
         ("TelegramBotToken", r"\b\d{9,}:[A-Za-z0-9_-]{35}\b"),
         ("JWT", r"\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\b"),
-        ("PasswordAssignment", r"(?i)\b(pass(word)?|secret|token|api[_-]?key)\b\s*[:=]\s*['\"][^'\"]{6,}['\"]"),
+        ("PasswordAssignment", r"""(?i)\b(?:[a-z0-9]+_)*(?:pass(?:word|wd)?|secret|token|api[_-]?key)(?:_[a-z0-9]+)*\b\s*[:=]\s*(?P<quote>['"])(?P<secret>[^'"]+)(?P=quote)"""),
         ("BasicAuthInURL", r"(?i)\b[a-z][a-z0-9+\-.]*://[^/\s:@]+:[^@\s]+@"),
     ]
-    COMPILED_RULES = [re.compile(rx) for _, rx in RULES]
+    COMPILED_RULES = [ (name, re.compile(pattern)) for name, pattern in RULES ]
 
+    PLACEHOLDERS = {
+        "example",
+        "placeholder",
+        "changeme",
+        "your_token_here",
+        "your_api_key_here",
+        "test-placeholder"
+    }
+
+    ENTROPY_CANDIDATE = re.compile(r"[A-Za-z0-9_\-+/=]{20,}")
 
     def __init__(self):
         log.info("Initializing Leaks parser")
 
-    def run_scanner(self, lines : List[str]):
+    def scan_line(self, line: str) -> dict | None:
 
-        log.debug(f"Running scanner on {len(lines)} lines")
-        rules_hits = self.__lines_matching_rules(lines)
-        entropy_hits = self.__lines_matching_entropy(lines)
-        test_hits = self.__lines_matching_test_words(lines)
+        hits = self._find_rule_hits(line)
+        hits.extend(self._find_entropy_hits(line, hits))
 
-        log.debug(f"Rule hits: {rules_hits}")
-        log.debug(f"Entropy hits: {entropy_hits}")
-        log.debug(f"Test hits: {test_hits}")
+        if not hits:
+            return None
 
-        results: List[str] = []
+        return {
+            "redacted_code": self._redact(line, hits),
+            "matches": [ self._describe_hit(line, hit) for hit in hits ]
+        }
 
-        for line in rules_hits:
-            if line not in results and line not in test_hits:
-                results.append(line)
-                log.debug(f"  [+] added from RULES: {line}")
+    def _find_rule_hits(self, line: str) -> list[dict]:
 
-        for line in entropy_hits:
-            if line not in results and line not in test_hits:
-                results.append(line)
-                log.debug(f"  [+] added from ENTROPY: {line}")
+        hits = []
 
-        if not results:
-            log.debug("Nothing suspicious detected")
-        return results
+        for rule_name, pattern in self.COMPILED_RULES:
+            for match in pattern.finditer(line):
+                group = "secret" if "secret" in pattern.groupindex else 0
+                start, end = match.span(group)
 
-    def __lines_matching_rules(self, lines: List[str]) -> List[str]:
+                hits.append({"rule": rule_name, "start": start, "end": end})
 
-        result: List[str] = []
+        return hits
 
-        for line in lines:
-            for rx in self.COMPILED_RULES:
-                if rx.search(line):
-                    result.append(line)
-                    break
+    def _find_entropy_hits(self, line: str, rule_hits: list[dict]) -> list[dict]:
 
-        return result
+        hits = []
 
-    def __lines_matching_test_words(self,lines: List[str]) -> List[str]:
+        for match in self.ENTROPY_CANDIDATE.finditer(line):
+            if self.__shannon_entropy(match.group()) < 4.0:
+                continue
 
-        result: List[str] = []
+            start, end = match.span()
 
-        for line in lines:
-            ln = line.lower()
-            if any(w in ln for w in self.TEST_WORDS):
-                result.append(line)
+            already_detected = any(
+                hit["start"] <= start and end <= hit["end"]
+                for hit in rule_hits
+            )
 
-        return result
+            if already_detected:
+                continue
 
-    def __lines_matching_entropy(self,lines: List[str], threshold: float = 4.0) -> List[str]:
+            hits.append({"rule": "HighEntropy", "start": start, "end": end})
 
-        result: List[str] = []
-        candidate = re.compile(r"[A-Za-z0-9_\-+/=]{20,}")
+        return hits
 
-        for line in lines:
-            for match in candidate.findall(line):
-                if self.__shannon_entropy(match) >= threshold:
-                    result.append(line)
-                    break
+    def _describe_hit(self, line: str, hit: dict) -> dict:
+        value = line[hit["start"]:hit["end"]]
 
-        return result
+        return {
+            "rule": hit["rule"],
+            "length": len(value),
+            "entropy": round(self.__shannon_entropy(value), 2),
+            "matches_known_placeholder": (value.casefold() in self.PLACEHOLDERS)
+        }
+
+    def _redact(self, line: str, hits: list[dict]) -> str:
+        spans = sorted( (hit["start"], hit["end"]) for hit in hits )
+        merged = []
+
+        for start, end in spans:
+            if merged and start <= merged[-1][1]:
+                previous_start, previous_end = merged[-1]
+                merged[-1] = (previous_start, max(previous_end, end))
+            else:
+                merged.append((start, end))
+
+        for start, end in reversed(merged):
+            line = line[:start] + "<REDACTED>" + line[end:]
+
+        return line
 
     def __shannon_entropy(self, s: str) -> float:
 
