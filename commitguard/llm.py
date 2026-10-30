@@ -1,14 +1,14 @@
-import logging, os
-import sys
-
-from importlib.resources import files
 import asyncio
-from langchain_openai import ChatOpenAI
+import logging
+import os
+import sys
+from importlib.resources import files
+from typing import Literal
+
 from dotenv import load_dotenv
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.prompts import ChatPromptTemplate
-
-from typing import List, Literal
+from langchain_openai import ChatOpenAI
 from pydantic import BaseModel, Field
 
 load_dotenv()
@@ -35,7 +35,7 @@ class Finding(BaseModel):
 
 
 class FindingsReport(BaseModel):
-    findings: List[Finding] = Field(default_factory=list)
+    findings: list[Finding] = Field(default_factory=list)
 
 parser = PydanticOutputParser(pydantic_object=FindingsReport)
 
@@ -68,7 +68,7 @@ prompt = ChatPromptTemplate.from_messages(
 
 chain = prompt | llm | parser
 
-def run_batches_sequential(batches: List[str]):
+def run_batches_sequential(batches: list[str]):
 
     responses = []
     for i, b in enumerate(batches, start=1):
@@ -82,7 +82,7 @@ def run_batches_sequential(batches: List[str]):
 
     return responses
 
-async def run_batches_async(batches: List[str], concurrency: int = 10):
+async def run_batches_async(batches: list[str], concurrency: int = 10):
 
     total = len(batches)
     if total == 0:
@@ -105,16 +105,16 @@ async def run_batches_async(batches: List[str], concurrency: int = 10):
     return await asyncio.gather(*tasks)
 
 
-def run_llm(text: List[str], batch_size : int = 6000, token_factor : float = 0.3, async_requests = True) -> FindingsReport:
+def run_llm(text: list[str], batch_size : int = 6000, token_factor : float = 0.3, async_requests = True) -> FindingsReport:
 
     batches = make_batches(text, batch_size, token_factor)
     log.info(f"LLM Configuration - Batches:{len(batches)} (Batch Size:{batch_size}, Token factor: {token_factor}), Model:{llm.model_name})")
     log.info("LLM: Running using default prompt")
 
     if async_requests:
-        response: List[FindingsReport] = asyncio.run(run_batches_async(batches, concurrency=10))
+        response: list[FindingsReport] = asyncio.run(run_batches_async(batches, concurrency=10))
     else:
-        response: List[FindingsReport] = run_batches_sequential(batches)
+        response: list[FindingsReport] = run_batches_sequential(batches)
 
     merged = []
     for r in response:
@@ -124,12 +124,12 @@ def run_llm(text: List[str], batch_size : int = 6000, token_factor : float = 0.3
 
 
 
-def make_batches(text: List[str] , batch_size: int = 6000, token_factor: float = 0.3):
+def make_batches(text: list[str] , batch_size: int = 6000, token_factor: float = 0.3):
 
     symbols_amount = 0
     curr_batch = ""
 
-    batches: List[str] = []
+    batches: list[str] = []
 
     for line in text:
         if symbols_amount + len(line) * token_factor > batch_size:

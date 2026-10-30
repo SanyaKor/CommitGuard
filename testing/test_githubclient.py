@@ -1,11 +1,7 @@
-from pytest_mock import mocker
-from commitguard import githubclient
 import pytest
 import requests
-import os
 
 from commitguard.githubclient import GitHubClient
-
 
 
 def test_auth_github_api(mocker, caplog):
@@ -54,10 +50,14 @@ def test_github_fetching_sync(mocker, caplog):
     }
 
     def get_side_effect(url, *a, **k):
-        if url.endswith("/user"): return fake_user
-        if url.endswith("/commits"): return fake_commits
-        if url.endswith("/commits/abc123"): return fake_detail_abc
-        if url.endswith("/commits/def456"): return fake_detail_def
+        if url.endswith("/user"):
+            return fake_user
+        if url.endswith("/commits"):
+            return fake_commits
+        if url.endswith("/commits/abc123"):
+            return fake_detail_abc
+        if url.endswith("/commits/def456"):
+            return fake_detail_def
         raise AssertionError(f"Unexpected URL: {url}")
 
     mocker.patch("commitguard.githubclient.requests.Session.get", side_effect=get_side_effect)

@@ -1,12 +1,13 @@
-import re
-import os
-import sys
-import requests
 import asyncio
+import os
+import re
+import sys
 import time
 from pathlib import Path
-from typing import List, Dict, Tuple
+
+import requests
 from dotenv import load_dotenv
+
 from .logging_config import get_logger
 
 log = get_logger(__name__)
@@ -78,7 +79,7 @@ class GitHubClient:
         start_time = time.time()
         commit_hashes = self.__fetch_commits_list(number_of_commits)
 
-        commit_data: Dict[str, Dict] = {}
+        commit_data: dict[str, dict] = {}
 
         for commit_hash in commit_hashes:
             log.debug(f"Fetching commit {commit_hash}")
@@ -128,7 +129,7 @@ class GitHubClient:
         log.info("Successfully fetched %s commit(s)", len(results))
 
 
-        commit_data: Dict[str, Dict] = {}
+        commit_data: dict[str, dict] = {}
         for commit_hash, data in results:
             commit_data[commit_hash] = data
 
@@ -170,8 +171,8 @@ class GitHubClient:
             return False
 
 
-        additions: List[Dict[str, str]] = []
-        deletions: List[Dict[str, str]] = []
+        additions: list[dict[str, str]] = []
+        deletions: list[dict[str, str]] = []
 
 
         for f in c_data.get("files", []):
@@ -231,7 +232,7 @@ class GitHubClient:
 
     # region PRIVATE methods
 
-    def __fetch_commits_list(self, number_of_commits: int, ref: str | None = None) -> List[str]:
+    def __fetch_commits_list(self, number_of_commits: int, ref: str | None = None) -> list[str]:
 
         if(number_of_commits > self.MAX_COMMITS or number_of_commits < 1):
             log.error(f"Invalid number of commits [1:{self.MAX_COMMITS}], exiting ..")
@@ -255,7 +256,7 @@ class GitHubClient:
 
         return commit_hashes
 
-    def __fetch_commit_details_sync(self, commit_hash: str) -> Dict:
+    def __fetch_commit_details_sync(self, commit_hash: str) -> dict:
 
         log.debug(f"fetching commit details for {commit_hash}")
         url = self.__commits_details_url.format(sha=commit_hash)
@@ -285,7 +286,7 @@ class GitHubClient:
             "files": files,
         }
 
-    async def __fetch_commit_details_async(self, commit_hash: str) -> Tuple[str, Dict]:
+    async def __fetch_commit_details_async(self, commit_hash: str) -> tuple[str, dict]:
         data = await asyncio.to_thread(self.__fetch_commit_details_sync, commit_hash)
         return commit_hash, data
 
@@ -300,7 +301,7 @@ class GitHubClient:
         return m.group("owner"), m.group("repo")
 
 
-    def __fetch_pr_commits_list(self, pr_number: int) -> List[str]:
+    def __fetch_pr_commits_list(self, pr_number: int) -> list[str]:
 
         if pr_number < 1:
             raise ValueError("PR number must be positive")

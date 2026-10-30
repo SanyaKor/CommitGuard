@@ -1,13 +1,13 @@
-import re
-from typing import List, Tuple
-from .logging_config import get_logger
 import math
+import re
+
+from .logging_config import get_logger
 
 log = get_logger(__name__)
 
 class LeaksParser:
 
-    RULES: List[Tuple[str, str]] = [
+    RULES: list[tuple[str, str]] = [
         ("UnquotedSecretAssignment", r"""(?im)^\s*(?:export\s+)?(?:[a-z0-9]+_)*(?:pass(?:word|wd)?|secret|token|api[_-]?key)(?:_[a-z0-9]+)*\s*[:=]\s*(?P<secret>[^\s'"\#]+)\s*(?:#.*)?$"""),
         ("BearerAuthorization", r"""(?i)\bAuthorization\s*:\s*Bearer\s+(?P<secret>[A-Za-z0-9._~+/\-]+=*)"""),
         ("BasicAuthorization", r"""(?i)\bAuthorization\s*:\s*Basic\s+(?P<secret>[A-Za-z0-9+/]+={0,2})"""),

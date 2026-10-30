@@ -1,4 +1,6 @@
-import logging, os
+import logging
+import os
+
 
 def init_logging():
     level = os.getenv("LOG_LEVEL", "INFO").upper()

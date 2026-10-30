@@ -7,6 +7,7 @@ from commitguard.core import (
 )
 from commitguard.llm import Finding, FindingsReport
 
+
 def test_findings_are_attached_by_id(tmp_path):
     records = [
         {

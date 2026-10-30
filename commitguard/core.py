@@ -1,13 +1,17 @@
 import argparse
 import asyncio
-from .leaks_parser import LeaksParser
-from .githubclient import GitHubClient
-from typing import List, Dict, Any
-from .llm import run_llm, FindingsReport
-from .logging_config import get_logger
+import json
+import os
+import urllib.error
+import urllib.request
 from collections import Counter
 from pathlib import PurePosixPath
-import os, json, urllib.request, urllib.error
+from typing import Any
+
+from .githubclient import GitHubClient
+from .leaks_parser import LeaksParser
+from .llm import FindingsReport, run_llm
+from .logging_config import get_logger
 
 log = get_logger(__name__)
 
@@ -189,9 +193,9 @@ def main():
 
     leaksparser = LeaksParser()
 
-    suspicious_commits: List[Dict[str, Any]] = []
+    suspicious_commits: list[dict[str, Any]] = []
 
-    for commit_hash, details in c_data.items():
+    for commit_hash, _details in c_data.items():
 
         c_details = ghc.get_commit_details(commit_hash)
 
