@@ -1,5 +1,6 @@
 import math
 import re
+from typing import ClassVar
 
 from .logging_config import get_logger
 
@@ -7,7 +8,7 @@ log = get_logger(__name__)
 
 class LeaksParser:
 
-    RULES: list[tuple[str, str]] = [
+    RULES: ClassVar[list[tuple[str, str]]]  = [
         ("UnquotedSecretAssignment", r"""(?im)^\s*(?:export\s+)?(?:[a-z0-9]+_)*(?:pass(?:word|wd)?|secret|token|api[_-]?key)(?:_[a-z0-9]+)*\s*[:=]\s*(?P<secret>[^\s'"\#]+)\s*(?:#.*)?$"""),
         ("BearerAuthorization", r"""(?i)\bAuthorization\s*:\s*Bearer\s+(?P<secret>[A-Za-z0-9._~+/\-]+=*)"""),
         ("BasicAuthorization", r"""(?i)\bAuthorization\s*:\s*Basic\s+(?P<secret>[A-Za-z0-9+/]+={0,2})"""),
@@ -23,9 +24,9 @@ class LeaksParser:
         ("PasswordAssignment", r"""(?i)\b(?:[a-z0-9]+_)*(?:pass(?:word|wd)?|secret|token|api[_-]?key)(?:_[a-z0-9]+)*\b\s*[:=]\s*(?P<quote>['"])(?P<secret>[^'"]+)(?P=quote)"""),
         ("BasicAuthInURL", r"(?i)\b[a-z][a-z0-9+\-.]*://[^/\s:@]+:[^@\s]+@"),
     ]
-    COMPILED_RULES = [ (name, re.compile(pattern)) for name, pattern in RULES ]
+    COMPILED_RULES : ClassVar[list[tuple[str, re.Pattern[str]]]]  = [ (name, re.compile(pattern)) for name, pattern in RULES ]
 
-    PLACEHOLDERS = {
+    PLACEHOLDERS : ClassVar[set[str]]  = {
         "example",
         "placeholder",
         "changeme",

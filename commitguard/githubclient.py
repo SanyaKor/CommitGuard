@@ -4,6 +4,7 @@ import re
 import sys
 import time
 from pathlib import Path
+from typing import ClassVar
 
 import requests
 from dotenv import load_dotenv
@@ -15,7 +16,7 @@ log = get_logger(__name__)
 
 
 class GitHubClient:
-    ALLOWED_EXTENSIONS = {
+    ALLOWED_EXTENSIONS:  ClassVar[set[str]] = {
         ".py", ".js", ".java", ".go", ".rb", ".php", ".cs", ".c", ".cpp",
         ".yml", ".yaml", ".json", ".cfg",
         ".sh", ".bash", ".key", ".ipynb"
