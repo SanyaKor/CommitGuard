@@ -3,7 +3,7 @@ import asyncio
 from .leaks_parser import LeaksParser
 from .githubclient import GitHubClient
 from typing import List, Dict, Any
-from .llm import run_llm
+from .llm import run_llm, FindingsReport
 from .logging_config import get_logger
 from collections import Counter
 import os, json, urllib.request, urllib.error
@@ -11,56 +11,106 @@ import os, json, urllib.request, urllib.error
 log = get_logger(__name__)
 
 
-def write_pr_msg(msg: str = ""):
+
+def attach_findings(records: list[dict[str, Any]], report: FindingsReport) -> list[dict[str, Any]]:
+
+    records_by_id = {record["finding_id"]: record for record in records}
+
+    if len(records_by_id) != len(records):
+        raise ValueError("Input records contain duplicate finding IDs")
+
+    findings_by_id: dict[str, list[dict[str, str]]] = { finding_id: [] for finding_id in records_by_id }
+
+    for finding in report.findings:
+        if finding.finding_id not in records_by_id:
+            raise ValueError( f"LLM returned an unknown finding ID: {finding.finding_id}" )
+
+        findings_by_id[finding.finding_id].append(
+            {
+                "level": finding.level,
+                "message": finding.message,
+                "evidence": finding.evidence
+            }
+        )
+
+    results = []
+
+    for record in records:
+        finding_id = record["finding_id"]
+
+        result = record.copy()
+        result["llm_findings"] = findings_by_id[finding_id]
+
+        results.append(result)
+
+    return results
+
+def build_pr_summary(report: FindingsReport, suspicious_count: int) -> str:
+    stats = Counter(finding.level for finding in report.findings)
+
+    lines = [
+        "## CommitGuard — Security Scan Results",
+        "",
+        f"Suspicious lines detected: **{suspicious_count}**",
+        f"LLM findings: **{len(report.findings)}**",
+        "",
+        "| Severity | Count |",
+        "|----------|-------|",
+    ]
+
+    for severity in ("CRITICAL", "HIGH", "MEDIUM", "LOW"):
+        lines.append(f"| {severity} | {stats[severity]} |")
+
+    if not report.findings:
+        lines.extend([
+            "",
+            "The LLM returned no findings for the submitted candidates."
+        ])
+
+    return "\n".join(lines)
+
+def write_pr_msg(msg: str = "") -> None:
     if os.getenv("GITHUB_ACTIONS") != "true":
-        log.info("PR: LOCAL RUN. Exiting..")
         return
 
-    try:
-        repo = os.environ["REPO"]
-        pr = os.environ["PR_NUMBER"]
-        token = os.environ["GITHUB_TOKEN"]
-        run_id = os.environ["GITHUB_RUN_ID"]
-    except KeyError as e:
-        raise RuntimeError(f"Missing required CI env var: {e}") from e
-
+    repo = os.environ["REPO"]
+    pr = os.environ["PR_NUMBER"]
+    token = os.environ["GITHUB_TOKEN"]
+    run_id = os.environ["GITHUB_RUN_ID"]
 
     run_url = f"https://github.com/{repo}/actions/runs/{run_id}"
-
-
-    body = "\n".join([
-        "📎 **Full analysis report:** available in workflow artifacts → `commitguard-report`",
-        "",
-        f"- View JSON report: {run_url}",
-        "",
-        "- Workflow artifacts: `commitguard-report`"
-        "",
-        "⚠️ **Recommendation:** review **High** and **Medium** findings before merging this PR."
-    ])
-
     url = f"https://api.github.com/repos/{repo}/issues/{pr}/comments"
 
-    pr_msg = "Leaks parser did not find anything suspicious. Exiting..." if not msg else "\n".join([msg.rstrip(), "", body])
+    if msg.strip():
+        body = (
+            f"{msg.strip()}\n\n"
+            f"Full report: `commitguard-report` artifact "
+            f"in the [workflow run]({run_url})."
+        )
+    else:
+        body = (
+            "## CommitGuard — Security Scan Results\n\n"
+            "The parser detected no suspicious lines."
+        )
 
-    data = json.dumps({"body": pr_msg}).encode("utf-8")
-
-    req = urllib.request.Request(
-        url, data=data, method="POST",
+    request = urllib.request.Request(
+        url,
+        data=json.dumps({"body": body}).encode("utf-8"),
+        method="POST",
         headers={
             "Authorization": f"Bearer {token}",
             "Accept": "application/vnd.github+json",
             "Content-Type": "application/json",
-            "User-Agent": "ci-external-scripts"
+            "User-Agent": "commitguard"
         }
     )
 
     try:
-        with urllib.request.urlopen(req) as r:
-            log.info("Status:", r.status)
-            log.info("Comment posted.") if r.status == 201 else print("Unexpected response.")
-    except urllib.error.HTTPError as e:
-        log.error("API error:", e.code, e.read().decode())
-        raise SystemExit(1)
+        with urllib.request.urlopen(request, timeout=20) as response:
+            log.info("PR comment posted: HTTP %s", response.status)
+    except urllib.error.URLError as error:
+        log.error("Failed to post PR comment: %s", error)
+        raise SystemExit(1) from error
 
 
 def save_results_to_file(suspicious_commits, filename="suspicious_commits.json"):
@@ -74,32 +124,49 @@ def save_results_to_file(suspicious_commits, filename="suspicious_commits.json")
 
 def main():
     parser = argparse.ArgumentParser(prog="commitguard", description="Scan github repository for commits (searching for some leaks / weak / insecure places)")
-    parser.add_argument("--repo", required=True, help="URL GitHub-repo (HTTPS or SSH)")
-    parser.add_argument("--n", required=True, help="Amount of commits to fetch [1, 100]")
 
-    parser.add_argument(
-        "--out",
-        default="suspicious_commits.json",
-        help="Output json file name (default: suspicious_commits.json)"
-    )
+    parser.add_argument("--repo", required=True, help="GitHub repository URL (HTTPS or SSH)")
 
-    parser.add_argument(
-        "--nofile",
-        action="store_true",
-        help="Do not save output to file"
-    )
+    mode = parser.add_mutually_exclusive_group(required=True)
+
+    mode.add_argument("--n", type=int, help="Number of latest commits to scan [1, 100]")
+    mode.add_argument("--pr", type=int, help="Pull request number to scan")
+
+    parser.add_argument("--ref", help="Branch, tag, or commit SHA to start from (only with --n)")
+    parser.add_argument("--out", default="suspicious_commits.json", help="Output JSON file name (default: suspicious_commits.json)")
+    parser.add_argument("--nofile", action="store_true", help="Do not save output to file")
+
     args = parser.parse_args()
+
+    if args.pr is not None and args.ref is not None:
+        parser.error("--ref can only be used with --n")
+
+    if args.n is not None and not 1 <= args.n <= 100:
+        parser.error("--n must be between 1 and 100")
+
+    if args.pr is not None and args.pr < 1:
+        parser.error("--pr must be a positive integer")
+
+
     ghc = GitHubClient(args.repo)
 
     ghc.authorize_github_api()
 
-
     async def conc_part():
-        commit_data = await ghc.run_fetching_async(int(args.n), 10)
-        return commit_data
+        return await ghc.run_fetching_async(
+            number_of_commits=args.n,
+            max_concurrency=10,
+            ref=args.ref,
+            pr_number=args.pr
+        )
 
 
     c_data = asyncio.run(conc_part())
+
+    if not c_data:
+        log.info("No commits to analyze. Exiting.")
+        return
+
     leaksparser = LeaksParser()
 
     suspicious_commits: List[Dict[str, Any]] = []
@@ -135,86 +202,42 @@ def main():
         write_pr_msg()
         return None
 
-    log.info(f"Leaks parser found {len(suspicious_commits)} suspicious line(s), sending to LLM for analysis")
+    for index, record in enumerate(suspicious_commits):
+        record["finding_id"] = f"finding-{index}"
 
-    suspicious_texts: List[str] = [r["line"] for r in suspicious_commits]
+    suspicious_texts = [
+        json.dumps(
+            {
+                "finding_id": record["finding_id"],
+                "code": record["line"],
+            },
+            ensure_ascii=False
+        )
+        for record in suspicious_commits
+    ]
 
-    response = run_llm(suspicious_texts)
-    lines = [l.strip() for l in response.splitlines() if l.strip()]
-    levels = []
+    report = run_llm(suspicious_texts)
+    results = attach_findings(suspicious_commits, report)
 
-    for line in lines:
-        if line.upper().startswith("HIGH"):
-            levels.append("HIGH")
-        elif line.upper().startswith("MEDIUM"):
-            levels.append("MEDIUM")
-        elif line.upper().startswith("LOW"):
-            levels.append("LOW")
-        elif line.lower().startswith("ok"):
-            levels.append("OK")
+    if not args.nofile:
+        save_results_to_file(results, args.out)
 
-    for line in lines:
-        log.debug(f"LLM: {line}")
-
-    stats = Counter(levels)
-
+    stats = Counter(finding.level for finding in report.findings)
     log.info(
-        f"LLM summary: "
-        f"{stats.get('HIGH', 0)} HIGH, "
-        f"{stats.get('MEDIUM', 0)} MEDIUM, "
-        f"{stats.get('LOW', 0)} LOW, "
-        f"{stats.get('OK', 0)} OK"
+        "LLM summary: %s CRITICAL, %s HIGH, %s MEDIUM, %s LOW",
+        stats["CRITICAL"],
+        stats["HIGH"],
+        stats["MEDIUM"],
+        stats["LOW"]
     )
-    for result in response:
-        for item in suspicious_commits:
-            if item["line"] in result:
-                item["llm_response"] = result
-                break
 
-    if args.nofile == False:
-        save_results_to_file(suspicious_commits, args.out)
-
-    order = ["HIGH", "MEDIUM", "LOW", "OK"]
-
-    lines = []
-
-    lines.append("## 🛡 CommitGuard — Security Scan Results")
-    lines.append("")
-    lines.append("### 🔍 Leaks Parser Report")
-    lines.append("")
-    lines.append(f"**Suspicious lines found:** `{len(suspicious_commits)}`")
-    lines.append("")
-
-    lines.append("| Severity | Count |")
-    lines.append("|---------|--------|")
-
-    for level in order:
-        count = stats.get(level, 0)
-
-        if level.lower() == "high":
-            icon = "🔴"
-        elif level.lower() == "medium":
-            icon = "🟠"
-        elif level.lower() == "low":
-            icon = "🟡"
-        else:
-            icon = "🟢"
-
-        lines.append(f"| {icon} {level.capitalize()} | {count} |")
-
-    lines.append("")
-    lines.append("All suspicious lines were forwarded to the LLM for further analysis (via LangChain).")
-    lines.append("")
-    lines.append("---")
-    lines.append("")
-    lines.append("### 🤖 LLM Severity Classification")
-    lines.append("")
-    lines.append("Findings were analyzed by an LLM to reduce false positives and assess real security risk.")
-    lines.append("")
-
-    summary = "\n".join(lines)
+    summary = build_pr_summary(
+        report=report,
+        suspicious_count=len(suspicious_commits)
+    )
 
     write_pr_msg(summary)
+
     return None
 
 if __name__ == "__main__":

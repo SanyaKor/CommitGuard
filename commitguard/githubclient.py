@@ -25,6 +25,7 @@ class GitHubClient:
         owner, repo = self.__parse_github_url(repo_url)
         self.__commits_lists_url = f"https://api.github.com/repos/{owner}/{repo}/commits"
         self.__commits_details_url = f"https://api.github.com/repos/{owner}/{repo}/commits/{{sha}}"
+        self.__pr_commits_url = (f"https://api.github.com/repos/{owner}/{repo}/pulls/{{pr_number}}/commits")
         self.__session = requests.Session()
         self.__commit_data = None
 
@@ -89,16 +90,30 @@ class GitHubClient:
 
         return commit_data
 
-    async def run_fetching_async(self, number_of_commits : int, max_concurrency: int) :
+    async def run_fetching_async(
+            self,
+            number_of_commits: int | None = None,
+            max_concurrency: int = 10,
+            *,
+            ref: str | None = None,
+            pr_number: int | None = None
+    ):
 
-        if number_of_commits > self.MAX_COMMITS or number_of_commits < 1:
-            log.error(f"Invalid number of commits [1:{self.MAX_COMMITS}], exiting ..")
-            sys.exit(1)
+        if (number_of_commits is None) == (pr_number is None):
+            raise ValueError("Specify exactly one of number_of_commits or pr_number")
 
-        log.info(f"Fetching {number_of_commits} commit(s) ...")
+        if pr_number is not None and ref is not None:
+            raise ValueError("--ref cannot be used with --pr")
+
+        if max_concurrency < 1:
+            raise ValueError("max_concurrency must be positive")
 
         start_time = time.time()
-        commit_hashes = await asyncio.to_thread(self.__fetch_commits_list, number_of_commits)
+
+        if pr_number is not None:
+            commit_hashes = await asyncio.to_thread(self.__fetch_pr_commits_list,pr_number)
+        else:
+            commit_hashes = await asyncio.to_thread(self.__fetch_commits_list,number_of_commits, ref)
 
         sem = asyncio.Semaphore(max_concurrency)
 
@@ -108,7 +123,7 @@ class GitHubClient:
                 return await self.__fetch_commit_details_async(commit_hash)
 
         results = await asyncio.gather(*(guarded(commit_hash) for commit_hash in commit_hashes))
-        log.info(f"Successfully fetched {number_of_commits} commit(s)")
+        log.info("Successfully fetched %s commit(s)", len(results))
 
 
         commit_data: Dict[str, Dict] = {}
@@ -209,17 +224,24 @@ class GitHubClient:
         }
 
         return details
+
     #endregion
 
     # region PRIVATE methods
 
-    def __fetch_commits_list(self, number_of_commits: int) -> List[str]:
+    def __fetch_commits_list(self, number_of_commits: int, ref: str | None = None) -> List[str]:
 
         if(number_of_commits > self.MAX_COMMITS or number_of_commits < 1):
             log.error(f"Invalid number of commits [1:{self.MAX_COMMITS}], exiting ..")
             sys.exit(1)
 
-        params = {"per_page": number_of_commits}
+        params: dict[str, int | str] = {
+            "per_page": number_of_commits
+        }
+
+        if ref is not None:
+            params["sha"] = ref
+
         resp = self.__session.get(self.__commits_lists_url, params=params, timeout=20)
 
         resp.raise_for_status()
@@ -268,12 +290,40 @@ class GitHubClient:
     def __parse_github_url(self, url: str):
         git_regex = re.compile(
             r"^(?:https://github\.com/|git@github\.com:)(?P<owner>[^/]+)/(?P<repo>[^/]+?)(?:\.git)?/?$",
-            re.IGNORECASE,
+            re.IGNORECASE
         )
         m = git_regex.match(url)
         if not m:
             return None, None
         return m.group("owner"), m.group("repo")
+
+
+    def __fetch_pr_commits_list(self, pr_number: int) -> List[str]:
+
+        if pr_number < 1:
+            raise ValueError("PR number must be positive")
+
+        url = self.__pr_commits_url.format(pr_number=pr_number)
+        params = {"per_page": 100}
+        commit_hashes = []
+
+        while url:
+            response = self.__session.get(url, params=params, timeout=20)
+
+            if response.status_code == 404:
+                log.warning(
+                    "PR #%s was not found or is not accessible. Skipping analysis.",
+                    pr_number
+                )
+                return []
+            response.raise_for_status()
+
+            commit_hashes.extend( item["sha"] for item in response.json())
+
+            url = response.links.get("next", {}).get("url")
+            params = None
+
+        return commit_hashes
     #endregion
 
 
