@@ -77,6 +77,7 @@ class GitHubClient:
         log.info(f"Fetching {number_of_commits} commit(s) ...")
         start_time = time.time()
         commit_hashes = self.__fetch_commits_list(number_of_commits)
+
         commit_data: Dict[str, Dict] = {}
 
         for commit_hash in commit_hashes:
@@ -115,6 +116,7 @@ class GitHubClient:
         else:
             commit_hashes = await asyncio.to_thread(self.__fetch_commits_list,number_of_commits, ref)
 
+        log.info("Fetching %s commit(s) ...", len(commit_hashes))
         sem = asyncio.Semaphore(max_concurrency)
 
         async def guarded(commit_hash: str):
