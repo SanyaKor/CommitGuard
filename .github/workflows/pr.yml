@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Post PR comment
-        uses: SanyaKor/CommitGuard@v1.0.0
+        uses: SanyaKor/CommitGuard@main
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
         env:
