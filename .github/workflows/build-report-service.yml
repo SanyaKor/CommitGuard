@@ -5,11 +5,11 @@ on:
     branches: [main]
     paths:
       - "report_service/**"
-      - ".github/workflows/report-service.yml"
+      - ".github/workflows/build-report-service.yml"
   pull_request:
     paths:
       - "report_service/**"
-      - ".github/workflows/report-service.yml"
+      - ".github/workflows/build-report-service.yml"
 
 permissions:
   contents: read
@@ -67,3 +67,52 @@ jobs:
           run: |
             docker push "$IMAGE:sha-$GITHUB_SHA"
             docker push "$IMAGE:main"
+
+  deploy:
+    needs: publish
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+
+    concurrency:
+      group: report-service-deploy
+      cancel-in-progress: false
+
+    env:
+      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+      DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+      DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+      DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+
+    steps:
+      - name: Configure SSH
+        run: |
+          umask 077
+          mkdir -p ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+
+      - name: Deploy API
+        run: |
+          ssh \
+            -i ~/.ssh/deploy_key \
+            -o BatchMode=yes \
+            -o StrictHostKeyChecking=yes \
+            -o ConnectTimeout=15 \
+            "$DEPLOY_USER@$DEPLOY_HOST" \
+            bash -s -- "$GITHUB_SHA" <<'REMOTE'
+          set -euo pipefail
+
+          cd "$HOME/commitguard"
+
+          image="ghcr.io/sanyakor/report-service:sha-$1"
+
+          sudo -n env REPORT_IMAGE="$image" docker compose pull api
+          sudo -n env REPORT_IMAGE="$image" docker compose up \
+            -d --no-deps --wait --wait-timeout 60 api
+
+          sudo -n docker compose ps
+          REMOTE
+
+      - name: Remove deployment key
+        if: always()
+        run: rm -f ~/.ssh/deploy_key
