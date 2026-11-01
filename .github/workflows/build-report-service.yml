@@ -1,0 +1,69 @@
+name: Build Report Service
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "report_service/**"
+      - ".github/workflows/report-service.yml"
+  pull_request:
+    paths:
+      - "report_service/**"
+      - ".github/workflows/report-service.yml"
+
+permissions:
+  contents: read
+
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Verify Docker build
+        run: |
+          docker build \
+            --platform linux/amd64 \
+            --tag report-service:test \
+            ./report_service
+
+  publish:
+      needs: build
+      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      runs-on: ubuntu-latest
+
+      permissions:
+        contents: read
+        packages: write
+
+      env:
+        IMAGE: ghcr.io/sanyakor/report-service
+
+      steps:
+        - name: Checkout repository
+          uses: actions/checkout@v4
+
+        - name: Build Docker image
+          run: |
+            docker build \
+              --platform linux/amd64 \
+              --label "org.opencontainers.image.source=https://github.com/$GITHUB_REPOSITORY" \
+              --tag "$IMAGE:main" \
+              --tag "$IMAGE:sha-$GITHUB_SHA" \
+              ./report_service
+
+        - name: Log in to GHCR
+          env:
+            GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          run: |
+            echo "$GHCR_TOKEN" | docker login ghcr.io \
+              --username "$GITHUB_ACTOR" \
+              --password-stdin
+
+        - name: Publish Docker image
+          run: |
+            docker push "$IMAGE:sha-$GITHUB_SHA"
+            docker push "$IMAGE:main"
